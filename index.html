@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -501,23 +502,39 @@ function setSyncStatus(status) { // 'syncing' | 'ok' | 'err' | 'idle'
 }
 
 // ── Google Sheets read ──────────────────────────────────
-async function loadFromSheet() {
-  setSyncStatus('syncing');
+let isSaving = false; // flag: don't poll while a save is in flight
+
+async function loadFromSheet(isInitialLoad = false) {
+  // Never poll while we're actively saving — sheet may be mid-write
+  if (isSaving) return;
+
   try {
     const res = await fetch(SHEET_URL + '&cachebust=' + Date.now());
     const text = await res.text();
-    const rows = text.trim().split('\n').slice(1); // skip header
-    assignments = {};
+    const rows = text.trim().split('\n').slice(1);
+
+    const loaded = {};
     rows.forEach(line => {
-      // CSV: "spot_id","bus_number"
       const cols = line.split(',').map(c => c.replace(/^"|"$/g,'').trim());
       if (cols[0] && cols[1] && cols[0] !== 'spot_id') {
-        assignments[cols[0]] = cols[1];
+        loaded[cols[0]] = cols[1];
       }
     });
+
+    // Safety check: never replace a fuller local state with a sparser sheet read.
+    // This prevents a mid-save or stale poll from wiping assignments.
+    const loadedCount = Object.keys(loaded).length;
+    const localCount  = Object.keys(assignments).length;
+
+    if (isInitialLoad || loadedCount >= localCount) {
+      assignments = loaded;
+      // Never overwrite the screen while locked — user is actively managing the map
+      if (!locked) {
+        renderGrid();
+        renderChips();
+      }
+    }
     setSyncStatus('ok');
-    renderGrid();
-    renderChips();
   } catch(e) {
     setSyncStatus('err');
     console.error('Load error:', e);
@@ -532,13 +549,10 @@ async function loadFromSheet() {
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwW_AjyYQyyFz0c-ntjQay74xVcxQQU1mnI1CB5ep7bOKoS9GiUivr5vJ4sGkDbSzNy/exec';
 
 async function saveToSheet() {
-  if (!APPS_SCRIPT_URL) {
-    setSyncStatus('err');
-    return;
-  }
+  if (!APPS_SCRIPT_URL) { setSyncStatus('err'); return; }
+  isSaving = true;
   setSyncStatus('syncing');
   try {
-    // Build array of rows
     const rows = [['spot_id','bus_number']];
     Object.keys(assignments).forEach(sid => {
       rows.push([sid, assignments[sid]]);
@@ -553,6 +567,8 @@ async function saveToSheet() {
   } catch(e) {
     setSyncStatus('err');
     console.error('Save error:', e);
+  } finally {
+    isSaving = false;
   }
 }
 
@@ -711,6 +727,7 @@ function doAssign(busNum, toSpot) {
   dragBusNum = null; dragFromSpot = null;
   renderGrid(); renderChips();
   scheduleSave();
+  resetPollTimer(); // push the next poll 60s from now
 }
 
 function removeSpot(sid) {
@@ -835,14 +852,21 @@ function toggleLock() {
   const btn = document.getElementById('lockBtn');
   btn.textContent = locked ? '🔒' : '🔓';
   btn.classList.toggle('locked', locked);
-  btn.title = locked ? 'Locked — drag to move, tap to unlock' : 'Unlocked — tap to lock';
+  btn.title = locked ? 'Locked — tap to unlock' : 'Unlocked — tap to lock';
   // Hide/show chip tray when locked
   document.getElementById('busChips').style.opacity       = locked ? '0.35' : '1';
   document.getElementById('busChips').style.pointerEvents = locked ? 'none' : '';
   document.querySelector('.tray-add').style.opacity       = locked ? '0.35' : '1';
   document.querySelector('.tray-add').style.pointerEvents = locked ? 'none' : '';
-  // Re-render so spots reflect lock state (no remove hint when locked)
+  // Also lock/unlock drag on filled spots by re-rendering
   renderGrid();
+  if (locked) {
+    // Pause polling while locked
+    clearTimeout(pollTimer);
+  } else {
+    // Resume poll timer on unlock — give 60s before next sheet read
+    resetPollTimer();
+  }
 }
 
 // ── Share / Copy ─────────────────────────────────────────
@@ -894,10 +918,17 @@ function copyList() {
 // ── Init ─────────────────────────────────────────────────
 renderGrid();
 renderChips();
-loadFromSheet();
+loadFromSheet(true); // initial load — always trust the sheet
 
-// Poll for changes every 30 seconds (keeps map in sync across devices)
-setInterval(loadFromSheet, 30000);
+// Poll only when idle: reset the timer on every assignment.
+// This means the sheet is only re-read 60 seconds after the LAST drag,
+// never during active use.
+let pollTimer = null;
+function resetPollTimer() {
+  clearTimeout(pollTimer);
+  pollTimer = setTimeout(() => loadFromSheet(false), 60000);
+}
+resetPollTimer(); // start the idle timer on page load
 </script>
 </body>
 </html>
