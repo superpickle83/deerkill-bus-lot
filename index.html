@@ -516,8 +516,9 @@ async function loadFromSheet(isInitialLoad = false) {
     const loaded = {};
     rows.forEach(line => {
       const cols = line.split(',').map(c => c.replace(/^"|"$/g,'').trim());
-      if (cols[0] && cols[1] && cols[0] !== 'spot_id') {
-        loaded[cols[0]] = cols[1];
+      // Columns are now: bus_number, spot_id
+      if (cols[0] && cols[1] && cols[0] !== 'bus_number') {
+        loaded[cols[1]] = cols[0]; // assignments[spotId] = busNum
       }
     });
 
@@ -553,10 +554,11 @@ async function saveToSheet() {
   isSaving = true;
   setSyncStatus('syncing');
   try {
-    const rows = [['spot_id','bus_number']];
-    Object.keys(assignments).forEach(sid => {
-      rows.push([sid, assignments[sid]]);
-    });
+    const rows = [['bus_number','spot_id']];
+    Object.keys(assignments)
+      .map(sid => ({ sid, busNum: assignments[sid] }))
+      .sort((a, b) => parseInt(a.busNum) - parseInt(b.busNum))
+      .forEach(({ sid, busNum }) => rows.push([busNum, sid]));
     const res = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -874,27 +876,18 @@ function openShare() {
   const list = document.getElementById('shareList');
   list.innerHTML = '';
 
-  const sorted = Object.keys(assignments).sort((a,b) => {
-    const [ar,ac] = a.replace('R','').split('-C').map(Number);
-    const [br,bc] = b.replace('R','').split('-C').map(Number);
-    return ac !== bc ? ac - bc : ar - br;
-  });
+  // Build array of {busNum, spotId} sorted by bus number numerically
+  const entries = Object.keys(assignments)
+    .map(sid => ({ sid, busNum: assignments[sid] }))
+    .sort((a, b) => parseInt(a.busNum) - parseInt(b.busNum));
 
-  if (!sorted.length) {
+  if (!entries.length) {
     list.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;padding:8px 0">No buses assigned yet.</div>';
   } else {
-    // Show Apps Script setup notice if not configured
-    if (!APPS_SCRIPT_URL) {
-      const notice = document.createElement('div');
-      notice.style.cssText = 'background:#1a1505;border:1px solid var(--accent);border-radius:5px;padding:8px 10px;margin-bottom:8px;font-size:0.7rem;color:var(--accent);line-height:1.5;';
-      notice.innerHTML = `<strong>⚠ Read-only mode.</strong> To enable live saving to Google Sheets, deploy an Apps Script (see instructions). Map is currently session-only.`;
-      list.appendChild(notice);
-    }
-    sorted.forEach(sid => {
-      const busNum = assignments[sid];
+    entries.forEach(({ sid, busNum }) => {
       const div = document.createElement('div');
       div.className = 'share-row';
-      div.innerHTML = `<div class="share-spot">${sid}</div><div class="share-bus">${busNum}</div>`;
+      div.innerHTML = `<div class="share-bus">${busNum}</div><div class="share-spot">${sid}</div>`;
       list.appendChild(div);
     });
   }
@@ -908,9 +901,10 @@ document.getElementById('overlay').addEventListener('click', e => {
 
 function copyList() {
   const lines = [`BUS ASSIGNMENTS — ${dateStr}`, '─────────────────────'];
-  Object.keys(assignments).sort().forEach(sid => {
-    lines.push(`${sid}:  Bus ${assignments[sid]}`);
-  });
+  Object.keys(assignments)
+    .map(sid => ({ sid, busNum: assignments[sid] }))
+    .sort((a, b) => parseInt(a.busNum) - parseInt(b.busNum))
+    .forEach(({ sid, busNum }) => lines.push(`Bus ${busNum}:  ${sid}`));
   navigator.clipboard.writeText(lines.join('\n'))
     .then(()=>alert('✓ Copied!')).catch(()=>alert('Copy failed.'));
 }
