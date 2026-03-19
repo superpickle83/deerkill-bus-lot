@@ -42,13 +42,13 @@
   }
   .logo {
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 1.1rem; font-weight: 900;
+    font-size: 1.375rem; font-weight: 900;
     letter-spacing: 0.05em; text-transform: uppercase; line-height: 1;
   }
   .logo em { color: var(--accent); font-style: normal; }
   .date-badge {
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 0.72rem; font-weight: 600;
+    font-size: 0.9rem; font-weight: 600;
     letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase;
   }
   .header-btns { display: flex; gap: 5px; align-items: center; }
@@ -64,7 +64,7 @@
 
   button {
     font-family: 'Barlow Condensed', sans-serif;
-    font-weight: 700; font-size: 0.72rem;
+    font-weight: 700; font-size: 0.9rem;
     letter-spacing: 0.07em; text-transform: uppercase;
     border: none; cursor: pointer;
     padding: 6px 10px; border-radius: 4px;
@@ -75,7 +75,7 @@
   .btn-lock {
     background: transparent; color: var(--text);
     border: 1.5px solid var(--border);
-    font-size: 0.85rem; padding: 4px 8px;
+    font-size: 1.0rem; padding: 4px 8px;
     border-radius: 4px; transition: all 0.15s;
   }
   .btn-lock.locked {
@@ -97,10 +97,10 @@
   .stats-bar {
     display: flex; gap: 10px; align-items: center;
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 0.72rem; font-weight: 600;
+    font-size: 0.9rem; font-weight: 600;
     letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
   }
-  .stat-val { color: var(--text); font-size: 0.9rem; font-weight: 900; }
+  .stat-val { color: var(--text); font-size: 1.125rem; font-weight: 900; }
   .stat-val.accent { color: var(--accent); }
   .stat-val.green  { color: var(--green); }
 
@@ -113,7 +113,7 @@
     display: inline-flex;
     flex-direction: row;
     gap: 0;
-    align-items: flex-end; /* Row 1 at bottom */
+    align-items: flex-end;
   }
 
   /* Left edge label — Wilder Road */
@@ -121,7 +121,7 @@
     writing-mode: vertical-rl;
     transform: rotate(180deg);
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 0.58rem; font-weight: 700;
+    font-size: 0.725rem; font-weight: 700;
     letter-spacing: 0.18em; text-transform: uppercase;
     color: var(--accent); opacity: 0.7;
     white-space: nowrap; margin-right: 6px;
@@ -139,7 +139,7 @@
   /* Each column */
   .lot-col {
     display: flex;
-    flex-direction: column-reverse; /* Row 1 at bottom */
+    flex-direction: column-reverse;
     gap: 4px;
     align-items: center;
   }
@@ -147,11 +147,11 @@
   /* Column header (col number) at top */
   .col-header {
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 0.6rem; font-weight: 700;
+    font-size: 0.75rem; font-weight: 700;
     letter-spacing: 0.08em; text-transform: uppercase;
     color: #3a4060; text-align: center;
     padding-bottom: 3px;
-    order: 999; /* always on top despite column-reverse */
+    order: 999;
   }
 
   /* Col 5 angled — visually distinct */
@@ -184,15 +184,15 @@
     align-items: flex-end;
   }
   .row-label-item {
-    height: 52px;
+    height: 62px;
     display: flex; align-items: center; justify-content: flex-end;
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 0.62rem; font-weight: 700;
+    font-size: 0.775rem; font-weight: 700;
     color: #3a4060; padding-right: 4px;
     flex-shrink: 0;
   }
   /* phantom for col-header alignment */
-  .row-label-top { height: 18px; order: 999; }
+  .row-label-top { height: 22px; order: 999; }
 
   /* Aisle dots between cols */
   .col-aisle {
@@ -200,14 +200,14 @@
     display: flex; flex-direction: column-reverse;
     align-items: center; justify-content: space-evenly;
     gap: 3px; align-self: stretch;
-    padding-bottom: 18px; /* align with col-header height */
+    padding-bottom: 22px;
   }
   .aisle-dot { width: 2px; height: 2px; border-radius: 50%; background: #1e2438; flex-shrink: 0; }
 
   /* Bottom entrance label */
   .entrance-label {
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 0.58rem; font-weight: 700;
+    font-size: 0.725rem; font-weight: 700;
     letter-spacing: 0.14em; text-transform: uppercase;
     color: #2a3350; text-align: center;
     margin-top: 6px; padding-top: 4px;
@@ -217,7 +217,7 @@
 
   /* SPOT */
   .spot {
-    width: 52px; height: 52px;
+    width: 62px; height: 62px;
     border-radius: 4px;
     border: 2px dashed #1e2438;
     background: #10131c;
@@ -245,22 +245,22 @@
   .spot-id {
     position: absolute; top: 2px; left: 4px;
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 0.44rem; font-weight: 700;
+    font-size: 0.55rem; font-weight: 700;
     letter-spacing: 0.04em; color: var(--muted); opacity: 0.4; line-height: 1;
   }
   .spot-bus-num {
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 1.3rem; font-weight: 900;
+    font-size: 1.625rem; font-weight: 900;
     color: var(--green); line-height: 1;
   }
-  .spot-empty-icon  { font-size: 0.7rem; opacity: 0.08; }
+  .spot-empty-icon  { font-size: 0.875rem; opacity: 0.08; }
   .spot-empty-label {
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 0.42rem; color: #222840; font-weight: 600;
+    font-size: 0.525rem; color: #222840; font-weight: 600;
   }
   .spot-remove {
     position: absolute; top: 2px; right: 3px;
-    font-size: 0.44rem; color: var(--red);
+    font-size: 0.55rem; color: var(--red);
     opacity: 0; transition: opacity 0.12s;
     font-weight: 700; font-family: 'Barlow Condensed', sans-serif;
   }
@@ -280,15 +280,15 @@
   }
   .tray-title {
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 0.62rem; font-weight: 700;
+    font-size: 0.775rem; font-weight: 700;
     letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted);
   }
   .tray-add { display: flex; gap: 4px; align-items: center; }
   input[type="text"] {
-    font-family: 'Barlow', sans-serif; font-size: 0.75rem;
+    font-family: 'Barlow', sans-serif; font-size: 0.9375rem;
     background: var(--bg); border: 1px solid var(--border);
     color: var(--text); border-radius: 4px; padding: 4px 7px;
-    width: 72px; outline: none; transition: border-color 0.15s;
+    width: 80px; outline: none; transition: border-color 0.15s;
   }
   input[type="text"]:focus { border-color: var(--accent); }
   input::placeholder { color: var(--muted); }
@@ -299,7 +299,7 @@
   }
   .bus-chip {
     display: flex; align-items: center; gap: 3px;
-    padding: 4px 8px; border-radius: 20px;
+    padding: 5px 10px; border-radius: 20px;
     border: 1.5px solid var(--border); background: var(--surface2);
     cursor: grab; user-select: none; touch-action: none;
     transition: all 0.12s; flex-shrink: 0;
@@ -308,7 +308,7 @@
   .bus-chip:hover:not(.placed) { border-color: var(--accent); }
   .bus-chip.placed  { opacity: 0.32; cursor: default; border-color: var(--green); }
   .bus-chip.dragging { opacity: 0.15; }
-  .chip-num { font-family:'Barlow Condensed',sans-serif; font-size:0.95rem; font-weight:900; color:var(--accent); line-height:1; }
+  .chip-num { font-family:'Barlow Condensed',sans-serif; font-size:1.1875rem; font-weight:900; color:var(--accent); line-height:1; }
   .chip-num.placed { color: var(--green); }
   .chip-dot { width:5px; height:5px; border-radius:50%; background:var(--muted); flex-shrink:0; }
   .chip-dot.ok { background: var(--green); }
@@ -323,15 +323,15 @@
   .modal {
     background:var(--surface); border:1px solid var(--border);
     border-top:3px solid var(--accent); border-radius:8px;
-    padding:18px 20px; width:340px; max-width:95vw; max-height:88vh;
+    padding:18px 20px; width:360px; max-width:95vw; max-height:88vh;
     display:flex; flex-direction:column; gap:10px;
   }
   .modal h2 {
-    font-family:'Barlow Condensed',sans-serif; font-size:1.05rem; font-weight:900;
+    font-family:'Barlow Condensed',sans-serif; font-size:1.3125rem; font-weight:900;
     letter-spacing:0.06em; text-transform:uppercase; color:var(--accent);
   }
   .modal-date {
-    font-family:'Barlow Condensed',sans-serif; font-size:0.65rem; font-weight:600;
+    font-family:'Barlow Condensed',sans-serif; font-size:0.8125rem; font-weight:600;
     letter-spacing:0.1em; color:var(--muted); text-transform:uppercase; margin-top:-6px;
   }
   .share-list { overflow-y:auto; display:flex; flex-direction:column; gap:3px; flex:1; }
@@ -341,10 +341,10 @@
     border-radius:4px; border:1px solid rgba(34,197,94,0.2);
   }
   .share-spot {
-    font-family:'Barlow Condensed',sans-serif; font-size:0.65rem; font-weight:700;
-    letter-spacing:0.08em; color:var(--muted); min-width:72px; text-transform:uppercase;
+    font-family:'Barlow Condensed',sans-serif; font-size:0.8125rem; font-weight:700;
+    letter-spacing:0.08em; color:var(--muted); min-width:80px; text-transform:uppercase;
   }
-  .share-bus { font-family:'Barlow Condensed',sans-serif; font-size:1.15rem; font-weight:900; color:var(--accent); }
+  .share-bus { font-family:'Barlow Condensed',sans-serif; font-size:1.4375rem; font-weight:900; color:var(--accent); }
   .modal-btns { display:flex; gap:6px; justify-content:flex-end; }
 
   @media print {
@@ -643,7 +643,7 @@ function renderGrid() {
           colEl.appendChild(makeSpot(spotId(row, col)));
         } else {
           const ph = document.createElement('div');
-          ph.style.cssText = 'width:52px;height:52px;flex-shrink:0;visibility:hidden;';
+          ph.style.cssText = 'width:62px;height:62px;flex-shrink:0;visibility:hidden;';
           colEl.appendChild(ph);
         }
       }
@@ -656,7 +656,7 @@ function renderGrid() {
       if (col < 4) {
         for (let r = maxRow + 1; r <= MAX_ROWS; r++) {
           const ph = document.createElement('div');
-          ph.style.cssText = 'width:52px;height:52px;flex-shrink:0;visibility:hidden;';
+          ph.style.cssText = 'width:62px;height:62px;flex-shrink:0;visibility:hidden;';
           colEl.appendChild(ph);
         }
       }
