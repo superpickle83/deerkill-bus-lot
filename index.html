@@ -375,7 +375,6 @@
   <div class="header-btns">
     <div class="sync-dot" id="syncDot" title="Sync status"></div>
     <button class="btn-lock" id="lockBtn" onclick="toggleLock()" title="Lock map">🔓</button>
-    <button class="btn-ghost" onclick="clearAll()">↺</button>
     <button class="btn-ghost" onclick="window.print()">🖨</button>
     <button class="btn-accent" onclick="openShare()">📋</button>
   </div>
@@ -671,33 +670,8 @@ function makeSpot(sid, extraClass) {
   if (busNum) {
     el.draggable = true;
     el.innerHTML = `<div class="spot-id">${sid}</div>
-      <div class="spot-remove">${locked ? '' : 'hold'}</div>
       <div class="spot-bus-num">${busNum}</div>`;
-
-    // Long-press to remove (600ms) — cancelled immediately on any touch move
-    let pressTimer = null;
-    const cancelPress = () => clearTimeout(pressTimer);
-
-    el.addEventListener('mousedown', () => {
-      if (locked) return;
-      pressTimer = setTimeout(() => removeSpot(sid), 600);
-    });
-    el.addEventListener('mouseup',    cancelPress);
-    el.addEventListener('mouseleave', cancelPress);
-    el.addEventListener('touchstart', e => {
-      if (locked) return;
-      pressTimer = setTimeout(() => {
-        // Only remove if no drag ghost is active
-        if (!touchGhost) {
-          removeSpot(sid);
-        }
-      }, 600);
-    }, {passive:true});
-    el.addEventListener('touchend',  cancelPress);
-    el.addEventListener('touchmove', cancelPress); // any movement cancels remove
-
     el.addEventListener('dragstart', e => {
-      clearTimeout(pressTimer);
       dragBusNum = busNum; dragFromSpot = sid;
       e.dataTransfer.effectAllowed = 'move';
       setTimeout(() => el.style.opacity = '0.2', 0);
@@ -745,7 +719,6 @@ function removeSpot(sid) {
   renderGrid(); renderChips();
   scheduleSave();
 }
-
 // ── Touch drag ───────────────────────────────────────────
 let touchGhost = null;
 let touchBusNum = null;
@@ -863,49 +836,13 @@ function toggleLock() {
   btn.textContent = locked ? '🔒' : '🔓';
   btn.classList.toggle('locked', locked);
   btn.title = locked ? 'Locked — drag to move, tap to unlock' : 'Unlocked — tap to lock';
-  // Hide/show chip tray and clear button when locked
-  document.getElementById('busChips').style.opacity   = locked ? '0.35' : '1';
+  // Hide/show chip tray when locked
+  document.getElementById('busChips').style.opacity       = locked ? '0.35' : '1';
   document.getElementById('busChips').style.pointerEvents = locked ? 'none' : '';
-  document.querySelector('.tray-add').style.opacity   = locked ? '0.35' : '1';
+  document.querySelector('.tray-add').style.opacity       = locked ? '0.35' : '1';
   document.querySelector('.tray-add').style.pointerEvents = locked ? 'none' : '';
-  document.querySelector('button[onclick="clearAll()"]').style.opacity = locked ? '0.35' : '1';
-  document.querySelector('button[onclick="clearAll()"]').style.pointerEvents = locked ? 'none' : '';
   // Re-render so spots reflect lock state (no remove hint when locked)
   renderGrid();
-}
-
-// ── Clear all ────────────────────────────────────────────
-let clearTapCount = 0;
-let clearTapTimer = null;
-function clearAll() {
-  if (locked) return;
-  // Only allow clear when every bus is placed (tray is empty)
-  const placed = new Set(Object.values(assignments));
-  const allPlaced = buses.every(b => placed.has(b.num));
-  if (!allPlaced) {
-    // Flash the sync dot as a hint
-    setSyncStatus('err');
-    document.getElementById('syncDot').title = 'Place all buses before clearing';
-    setTimeout(() => setSyncStatus('idle'), 1500);
-    return;
-  }
-  // Require two taps within 2 seconds to confirm
-  clearTapCount++;
-  if (clearTapCount === 1) {
-    document.getElementById('syncDot').title = 'Tap ↺ again to confirm clear';
-    setSyncStatus('syncing');
-    clearTapTimer = setTimeout(() => {
-      clearTapCount = 0;
-      setSyncStatus('idle');
-      document.getElementById('syncDot').title = 'Ready';
-    }, 2000);
-    return;
-  }
-  clearTimeout(clearTapTimer);
-  clearTapCount = 0;
-  assignments = {};
-  renderGrid(); renderChips();
-  scheduleSave();
 }
 
 // ── Share / Copy ─────────────────────────────────────────
