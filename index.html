@@ -468,8 +468,9 @@ let buses = [
   {id:17,num:'40'},{id:18,num:'41'},{id:19,num:'42'},{id:20,num:'43'},
   {id:21,num:'44'},{id:22,num:'45'},{id:23,num:'46'},{id:24,num:'47'},
   {id:25,num:'48'},{id:26,num:'49'},{id:27,num:'51'},{id:28,num:'52'},
+  {id:29,num:'80'},{id:30,num:'81'},
 ];
-let nextId = 29;
+let nextId = 31;
 let assignments = {}; // spotId → busNum (string)
 let dragBusNum = null;
 let dragFromSpot = null;
@@ -660,10 +661,29 @@ function makeSpot(sid, extraClass) {
   if (busNum) {
     el.draggable = true;
     el.innerHTML = `<div class="spot-id">${sid}</div>
-      <div class="spot-remove">✕</div>
+      <div class="spot-remove">hold</div>
       <div class="spot-bus-num">${busNum}</div>`;
-    el.addEventListener('click', () => removeSpot(sid));
+
+    // Long-press to remove (500ms) — prevents accidental clears on mobile
+    let pressTimer = null;
+    el.addEventListener('mousedown', () => {
+      pressTimer = setTimeout(() => removeSpot(sid), 600);
+    });
+    el.addEventListener('mouseup',   () => clearTimeout(pressTimer));
+    el.addEventListener('mouseleave',() => clearTimeout(pressTimer));
+    el.addEventListener('touchstart', e => {
+      // only start remove timer if NOT initiating a drag
+      pressTimer = setTimeout(() => {
+        removeSpot(sid);
+        touchBusNum = null; // cancel any drag in progress
+        if (touchGhost) { touchGhost.remove(); touchGhost = null; }
+      }, 600);
+    }, {passive:true});
+    el.addEventListener('touchend',  () => clearTimeout(pressTimer));
+    el.addEventListener('touchmove', () => clearTimeout(pressTimer)); // drag cancels remove
+
     el.addEventListener('dragstart', e => {
+      clearTimeout(pressTimer);
       dragBusNum = busNum; dragFromSpot = sid;
       e.dataTransfer.effectAllowed = 'move';
       setTimeout(() => el.style.opacity = '0.2', 0);
@@ -821,8 +841,22 @@ function addBus() {
 document.getElementById('addNum').addEventListener('keydown', e => { if(e.key==='Enter') addBus(); });
 
 // ── Clear all ────────────────────────────────────────────
+let clearTapCount = 0;
+let clearTapTimer = null;
 function clearAll() {
-  if (!confirm('Clear all assignments?')) return;
+  // Require two taps within 2 seconds on mobile to prevent accidents
+  clearTapCount++;
+  if (clearTapCount === 1) {
+    setSyncStatus('idle');
+    document.getElementById('syncDot').title = 'Tap ↺ again to confirm clear';
+    clearTapTimer = setTimeout(() => {
+      clearTapCount = 0;
+      document.getElementById('syncDot').title = 'Ready';
+    }, 2000);
+    return;
+  }
+  clearTimeout(clearTapTimer);
+  clearTapCount = 0;
   assignments = {};
   renderGrid(); renderChips();
   scheduleSave();
