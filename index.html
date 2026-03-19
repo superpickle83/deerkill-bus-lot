@@ -71,8 +71,17 @@
   }
   .btn-accent { background: var(--accent); color: #111; }
   .btn-accent:hover { background: #fbbf24; }
-  .btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
-  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-lock {
+    background: transparent; color: var(--text);
+    border: 1.5px solid var(--border);
+    font-size: 0.85rem; padding: 4px 8px;
+    border-radius: 4px; transition: all 0.15s;
+  }
+  .btn-lock.locked {
+    background: #1a2e1a;
+    border-color: var(--green);
+    box-shadow: 0 0 6px rgba(34,197,94,0.3);
+  }
 
   /* LAYOUT */
   .app-body { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
@@ -365,6 +374,7 @@
   <div class="date-badge" id="dateBadge"></div>
   <div class="header-btns">
     <div class="sync-dot" id="syncDot" title="Sync status"></div>
+    <button class="btn-lock" id="lockBtn" onclick="toggleLock()" title="Lock map">🔓</button>
     <button class="btn-ghost" onclick="clearAll()">↺</button>
     <button class="btn-ghost" onclick="window.print()">🖨</button>
     <button class="btn-accent" onclick="openShare()">📋</button>
@@ -661,7 +671,7 @@ function makeSpot(sid, extraClass) {
   if (busNum) {
     el.draggable = true;
     el.innerHTML = `<div class="spot-id">${sid}</div>
-      <div class="spot-remove">hold</div>
+      <div class="spot-remove">${locked ? '' : 'hold'}</div>
       <div class="spot-bus-num">${busNum}</div>`;
 
     // Long-press to remove (500ms) — prevents accidental clears on mobile
@@ -726,6 +736,7 @@ function doAssign(busNum, toSpot) {
 }
 
 function removeSpot(sid) {
+  if (locked) return;
   delete assignments[sid];
   renderGrid(); renderChips();
   scheduleSave();
@@ -840,10 +851,30 @@ function addBus() {
 }
 document.getElementById('addNum').addEventListener('keydown', e => { if(e.key==='Enter') addBus(); });
 
+// ── Lock ─────────────────────────────────────────────────
+let locked = false;
+function toggleLock() {
+  locked = !locked;
+  const btn = document.getElementById('lockBtn');
+  btn.textContent = locked ? '🔒' : '🔓';
+  btn.classList.toggle('locked', locked);
+  btn.title = locked ? 'Locked — drag to move, tap to unlock' : 'Unlocked — tap to lock';
+  // Hide/show chip tray and clear button when locked
+  document.getElementById('busChips').style.opacity   = locked ? '0.35' : '1';
+  document.getElementById('busChips').style.pointerEvents = locked ? 'none' : '';
+  document.querySelector('.tray-add').style.opacity   = locked ? '0.35' : '1';
+  document.querySelector('.tray-add').style.pointerEvents = locked ? 'none' : '';
+  document.querySelector('button[onclick="clearAll()"]').style.opacity = locked ? '0.35' : '1';
+  document.querySelector('button[onclick="clearAll()"]').style.pointerEvents = locked ? 'none' : '';
+  // Re-render so spots reflect lock state (no remove hint when locked)
+  renderGrid();
+}
+
 // ── Clear all ────────────────────────────────────────────
 let clearTapCount = 0;
 let clearTapTimer = null;
 function clearAll() {
+  if (locked) return;
   // Require two taps within 2 seconds on mobile to prevent accidents
   clearTapCount++;
   if (clearTapCount === 1) {
