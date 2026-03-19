@@ -674,23 +674,27 @@ function makeSpot(sid, extraClass) {
       <div class="spot-remove">${locked ? '' : 'hold'}</div>
       <div class="spot-bus-num">${busNum}</div>`;
 
-    // Long-press to remove (500ms) — prevents accidental clears on mobile
+    // Long-press to remove (600ms) — cancelled immediately on any touch move
     let pressTimer = null;
+    const cancelPress = () => clearTimeout(pressTimer);
+
     el.addEventListener('mousedown', () => {
+      if (locked) return;
       pressTimer = setTimeout(() => removeSpot(sid), 600);
     });
-    el.addEventListener('mouseup',   () => clearTimeout(pressTimer));
-    el.addEventListener('mouseleave',() => clearTimeout(pressTimer));
+    el.addEventListener('mouseup',    cancelPress);
+    el.addEventListener('mouseleave', cancelPress);
     el.addEventListener('touchstart', e => {
-      // only start remove timer if NOT initiating a drag
+      if (locked) return;
       pressTimer = setTimeout(() => {
-        removeSpot(sid);
-        touchBusNum = null; // cancel any drag in progress
-        if (touchGhost) { touchGhost.remove(); touchGhost = null; }
+        // Only remove if no drag ghost is active
+        if (!touchGhost) {
+          removeSpot(sid);
+        }
       }, 600);
     }, {passive:true});
-    el.addEventListener('touchend',  () => clearTimeout(pressTimer));
-    el.addEventListener('touchmove', () => clearTimeout(pressTimer)); // drag cancels remove
+    el.addEventListener('touchend',  cancelPress);
+    el.addEventListener('touchmove', cancelPress); // any movement cancels remove
 
     el.addEventListener('dragstart', e => {
       clearTimeout(pressTimer);
@@ -875,13 +879,24 @@ let clearTapCount = 0;
 let clearTapTimer = null;
 function clearAll() {
   if (locked) return;
-  // Require two taps within 2 seconds on mobile to prevent accidents
+  // Only allow clear when every bus is placed (tray is empty)
+  const placed = new Set(Object.values(assignments));
+  const allPlaced = buses.every(b => placed.has(b.num));
+  if (!allPlaced) {
+    // Flash the sync dot as a hint
+    setSyncStatus('err');
+    document.getElementById('syncDot').title = 'Place all buses before clearing';
+    setTimeout(() => setSyncStatus('idle'), 1500);
+    return;
+  }
+  // Require two taps within 2 seconds to confirm
   clearTapCount++;
   if (clearTapCount === 1) {
-    setSyncStatus('idle');
     document.getElementById('syncDot').title = 'Tap ↺ again to confirm clear';
+    setSyncStatus('syncing');
     clearTapTimer = setTimeout(() => {
       clearTapCount = 0;
+      setSyncStatus('idle');
       document.getElementById('syncDot').title = 'Ready';
     }, 2000);
     return;
