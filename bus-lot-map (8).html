@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Bus Lot — Deerkill Day Camp</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d26;
+    --surface2: #22263a;
+    --border: #2e334d;
+    --accent: #f5a623;
+    --green: #22c55e;
+    --red: #ef4444;
+    --text: #e8eaf2;
+    --muted: #6b7280;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Barlow', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* HEADER */
+  header {
+    background: var(--surface);
+    border-bottom: 3px solid var(--accent);
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .logo {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.1rem; font-weight: 900;
+    letter-spacing: 0.05em; text-transform: uppercase; line-height: 1;
+  }
+  .logo em { color: var(--accent); font-style: normal; }
+  .date-badge {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.72rem; font-weight: 600;
+    letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase;
+  }
+  .header-btns { display: flex; gap: 5px; align-items: center; }
+  .sync-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--muted); flex-shrink: 0;
+    transition: background 0.3s;
+  }
+  .sync-dot.syncing { background: var(--accent); animation: pulse 0.8s infinite; }
+  .sync-dot.ok      { background: var(--green); }
+  .sync-dot.err     { background: var(--red); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  button {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 0.72rem;
+    letter-spacing: 0.07em; text-transform: uppercase;
+    border: none; cursor: pointer;
+    padding: 6px 10px; border-radius: 4px;
+    transition: all 0.15s; touch-action: manipulation;
+  }
+  .btn-accent { background: var(--accent); color: #111; }
+  .btn-accent:hover { background: #fbbf24; }
+  .btn-lock {
+    background: transparent; color: var(--text);
+    border: 1.5px solid var(--border);
+    font-size: 0.85rem; padding: 4px 8px;
+    border-radius: 4px; transition: all 0.15s;
+  }
+  .btn-lock.locked {
+    background: #1a2e1a;
+    border-color: var(--green);
+    box-shadow: 0 0 6px rgba(34,197,94,0.3);
+  }
+
+  /* LAYOUT */
+  .app-body { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+
+  /* MAP AREA */
+  .map-area {
+    flex: 1; overflow: auto; padding: 10px 8px 6px;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .stats-bar {
+    display: flex; gap: 10px; align-items: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.72rem; font-weight: 600;
+    letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
+  }
+  .stat-val { color: var(--text); font-size: 0.9rem; font-weight: 900; }
+  .stat-val.accent { color: var(--accent); }
+  .stat-val.green  { color: var(--green); }
+
+  /* LOT */
+  .lot-wrap {
+    background: #0b0d13;
+    border: 1px solid #1e2235;
+    border-radius: 10px;
+    padding: 8px 10px 10px;
+    display: inline-flex;
+    flex-direction: row;
+    gap: 0;
+    align-items: flex-end; /* Row 1 at bottom */
+  }
+
+  /* Left edge label — Wilder Road */
+  .wilder-label {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.58rem; font-weight: 700;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--accent); opacity: 0.7;
+    white-space: nowrap; margin-right: 6px;
+    align-self: center;
+  }
+
+  /* Grid = columns side by side */
+  .lot-grid {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 5px;
+  }
+
+  /* Each column */
+  .lot-col {
+    display: flex;
+    flex-direction: column-reverse; /* Row 1 at bottom */
+    gap: 4px;
+    align-items: center;
+  }
+
+  /* Column header (col number) at top */
+  .col-header {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.6rem; font-weight: 700;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: #3a4060; text-align: center;
+    padding-bottom: 3px;
+    order: 999; /* always on top despite column-reverse */
+  }
+
+  /* Col 5 angled — visually distinct */
+  .lot-col.angled {
+    margin-left: 8px;
+    padding-left: 8px;
+    border-left: 1px dashed #1e2438;
+  }
+  .lot-col.angled .spot {
+    border-style: dashed;
+    border-color: #2a3a4a;
+    background: #0e1520;
+    transform: skewY(-8deg);
+  }
+  .lot-col.angled .spot.filled {
+    border-color: rgba(34,197,94,0.5);
+    background: #0a1a10;
+  }
+  .lot-col.angled .spot .spot-bus-num { transform: skewY(8deg); }
+  .lot-col.angled .spot .spot-id      { transform: skewY(8deg); }
+  .lot-col.angled .spot .spot-empty-icon { transform: skewY(8deg); }
+  .lot-col.angled .spot .spot-empty-label { transform: skewY(8deg); }
+
+  /* Row label shown beside col 1 */
+  .row-labels {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 4px;
+    margin-right: 4px;
+    align-items: flex-end;
+  }
+  .row-label-item {
+    height: 52px;
+    display: flex; align-items: center; justify-content: flex-end;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.62rem; font-weight: 700;
+    color: #3a4060; padding-right: 4px;
+    flex-shrink: 0;
+  }
+  /* phantom for col-header alignment */
+  .row-label-top { height: 18px; order: 999; }
+
+  /* Aisle dots between cols */
+  .col-aisle {
+    width: 6px;
+    display: flex; flex-direction: column-reverse;
+    align-items: center; justify-content: space-evenly;
+    gap: 3px; align-self: stretch;
+    padding-bottom: 18px; /* align with col-header height */
+  }
+  .aisle-dot { width: 2px; height: 2px; border-radius: 50%; background: #1e2438; flex-shrink: 0; }
+
+  /* Bottom entrance label */
+  .entrance-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.58rem; font-weight: 700;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: #2a3350; text-align: center;
+    margin-top: 6px; padding-top: 4px;
+    border-top: 1px dashed #1a1f2e;
+    width: 100%;
+  }
+
+  /* SPOT */
+  .spot {
+    width: 52px; height: 52px;
+    border-radius: 4px;
+    border: 2px dashed #1e2438;
+    background: #10131c;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    position: relative;
+    transition: border-color 0.12s, background 0.12s, transform 0.1s;
+    cursor: default; flex-shrink: 0;
+    touch-action: none;
+  }
+  .spot.drag-over {
+    border-color: var(--accent) !important;
+    background: #29200e !important;
+    transform: scale(1.08);
+    border-style: solid;
+  }
+  .spot.filled {
+    border: 2px solid rgba(34,197,94,0.5);
+    background: #0d1e14; cursor: pointer;
+  }
+  .spot.filled:hover { border-color: rgba(239,68,68,0.6); background: #1c0d0d; }
+  .spot:not(.filled):not(.drag-over):hover {
+    border-color: rgba(245,166,35,0.3); background: #16150d;
+  }
+  .spot-id {
+    position: absolute; top: 2px; left: 4px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.44rem; font-weight: 700;
+    letter-spacing: 0.04em; color: var(--muted); opacity: 0.4; line-height: 1;
+  }
+  .spot-bus-num {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.3rem; font-weight: 900;
+    color: var(--green); line-height: 1;
+  }
+  .spot-empty-icon  { font-size: 0.7rem; opacity: 0.08; }
+  .spot-empty-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.42rem; color: #222840; font-weight: 600;
+  }
+  .spot-remove {
+    position: absolute; top: 2px; right: 3px;
+    font-size: 0.44rem; color: var(--red);
+    opacity: 0; transition: opacity 0.12s;
+    font-weight: 700; font-family: 'Barlow Condensed', sans-serif;
+  }
+  .spot.filled:hover .spot-remove { opacity: 1; }
+
+  /* BUS TRAY */
+  .bus-tray {
+    flex-shrink: 0; background: var(--surface);
+    border-top: 2px solid var(--border);
+    display: flex; flex-direction: column;
+    max-height: 36vh;
+  }
+  .tray-header {
+    padding: 5px 10px 4px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .tray-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.62rem; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted);
+  }
+  .tray-add { display: flex; gap: 4px; align-items: center; }
+  input[type="text"] {
+    font-family: 'Barlow', sans-serif; font-size: 0.75rem;
+    background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); border-radius: 4px; padding: 4px 7px;
+    width: 72px; outline: none; transition: border-color 0.15s;
+  }
+  input[type="text"]:focus { border-color: var(--accent); }
+  input::placeholder { color: var(--muted); }
+  .bus-chips {
+    display: flex; flex-wrap: wrap; gap: 4px;
+    padding: 7px 8px; overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .bus-chip {
+    display: flex; align-items: center; gap: 3px;
+    padding: 4px 8px; border-radius: 20px;
+    border: 1.5px solid var(--border); background: var(--surface2);
+    cursor: grab; user-select: none; touch-action: none;
+    transition: all 0.12s; flex-shrink: 0;
+  }
+  .bus-chip:active { cursor: grabbing; transform: scale(0.95); }
+  .bus-chip:hover:not(.placed) { border-color: var(--accent); }
+  .bus-chip.placed  { opacity: 0.32; cursor: default; border-color: var(--green); }
+  .bus-chip.dragging { opacity: 0.15; }
+  .chip-num { font-family:'Barlow Condensed',sans-serif; font-size:0.95rem; font-weight:900; color:var(--accent); line-height:1; }
+  .chip-num.placed { color: var(--green); }
+  .chip-dot { width:5px; height:5px; border-radius:50%; background:var(--muted); flex-shrink:0; }
+  .chip-dot.ok { background: var(--green); }
+
+  /* OVERLAY */
+  .overlay {
+    display:none; position:fixed; inset:0;
+    background:rgba(0,0,0,0.82); z-index:100;
+    align-items:center; justify-content:center;
+  }
+  .overlay.open { display:flex; }
+  .modal {
+    background:var(--surface); border:1px solid var(--border);
+    border-top:3px solid var(--accent); border-radius:8px;
+    padding:18px 20px; width:340px; max-width:95vw; max-height:88vh;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .modal h2 {
+    font-family:'Barlow Condensed',sans-serif; font-size:1.05rem; font-weight:900;
+    letter-spacing:0.06em; text-transform:uppercase; color:var(--accent);
+  }
+  .modal-date {
+    font-family:'Barlow Condensed',sans-serif; font-size:0.65rem; font-weight:600;
+    letter-spacing:0.1em; color:var(--muted); text-transform:uppercase; margin-top:-6px;
+  }
+  .share-list { overflow-y:auto; display:flex; flex-direction:column; gap:3px; flex:1; }
+  .share-row {
+    display:flex; align-items:center; gap:10px;
+    padding:6px 10px; background:var(--surface2);
+    border-radius:4px; border:1px solid rgba(34,197,94,0.2);
+  }
+  .share-spot {
+    font-family:'Barlow Condensed',sans-serif; font-size:0.65rem; font-weight:700;
+    letter-spacing:0.08em; color:var(--muted); min-width:72px; text-transform:uppercase;
+  }
+  .share-bus { font-family:'Barlow Condensed',sans-serif; font-size:1.15rem; font-weight:900; color:var(--accent); }
+  .modal-btns { display:flex; gap:6px; justify-content:flex-end; }
+
+  @media print {
+    header,.bus-tray,.stats-bar,.overlay { display:none !important; }
+    body { background:white; color:#111; height:auto; overflow:visible; }
+    .map-area { padding:4px; overflow:visible; }
+    .lot-wrap { background:white; border-color:#ccc; }
+    .spot { border:1.5px solid #bbb; background:#f5f5f5; }
+    .spot.filled { background:#eaf7ee; border:1.5px solid #6fcf97; }
+    .spot-bus-num { color:#27ae60; }
+    .spot-id { opacity:1; color:#aaa; }
+    .wilder-label { color:#999; }
+    .col-header,.row-label-item { color:#999; }
+    .aisle-dot { background:#ddd; }
+    .entrance-label { color:#bbb; border-color:#ddd; }
+    .lot-col.angled .spot { transform:none; background:#f0f5f8; border-color:#9ab; }
+    .lot-col.angled .spot .spot-bus-num,
+    .lot-col.angled .spot .spot-id,
+    .lot-col.angled .spot .spot-empty-icon,
+    .lot-col.angled .spot .spot-empty-label { transform:none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><em>Bus Lot</em> <span style="font-weight:400;color:#6b7280">// Deerkill</span></div>
+  <div class="date-badge" id="dateBadge"></div>
+  <div class="header-btns">
+    <div class="sync-dot" id="syncDot" title="Sync status"></div>
+    <button class="btn-lock" id="lockBtn" onclick="toggleLock()" title="Lock map">🔓</button>
+    <button class="btn-ghost" onclick="window.print()">🖨</button>
+    <button class="btn-accent" onclick="openShare()">📋</button>
+  </div>
+</header>
+
+<div class="app-body">
+  <div class="map-area">
+    <div class="stats-bar">
+      <span><span class="stat-val accent" id="statTotal">28</span> buses</span>
+      <span style="color:#2e334d">|</span>
+      <span><span class="stat-val green" id="statPlaced">0</span> placed</span>
+      <span style="color:#2e334d">|</span>
+      <span><span class="stat-val" id="statOpen">30</span> open</span>
+    </div>
+
+    <div class="lot-wrap" id="lotWrap">
+      <!-- built by JS -->
+    </div>
+  </div>
+
+  <div class="bus-tray">
+    <div class="tray-header">
+      <div class="tray-title">Drag buses to spots</div>
+      <div class="tray-add">
+        <input type="text" id="addNum" placeholder="Add bus #" maxlength="6">
+        <button class="btn-accent" onclick="addBus()">+</button>
+      </div>
+    </div>
+    <div class="bus-chips" id="busChips"></div>
+  </div>
+</div>
+
+<!-- OVERLAY -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div>
+      <h2>📋 Bus Assignments</h2>
+      <div class="modal-date" id="modalDate"></div>
+    </div>
+    <div class="share-list" id="shareList"></div>
+    <div class="modal-btns">
+      <button class="btn-ghost" onclick="copyList()">Copy</button>
+      <button class="btn-accent" onclick="document.getElementById('overlay').classList.remove('open')">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Google Sheets config ────────────────────────────────
+const SHEET_ID  = '1BVMJySQfWAeYEEVy_dQygc8GYNfcc5J_M-31TBcHog4';
+const SHEET_TAB = 'BusAssignments';
+const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_TAB)}`;
+const WRITE_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/values/${encodeURIComponent(SHEET_TAB)}`;
+
+// ── Lot layout ──────────────────────────────────────────
+/*
+  Col 1: rows 1-5  (5 spots)
+  Col 2: rows 1-6  (6 spots)
+  Col 3: rows 1-7  (7 spots)
+  Col 4: rows 1-8  (8 spots)
+  Col 5: 4 angled spots (A1-A4)
+
+  Spot ID format: R[row]-C[col]   e.g. R2-C3
+  Angled:         R[1-4]-C5       e.g. R1-C5
+
+  Display: Row 1 at BOTTOM, Row 8 at TOP (column-reverse)
+  Wilder Road on LEFT, Happiness Hill at BOTTOM
+*/
+const COL_ROWS = { 1:5, 2:6, 3:7, 4:8 };
+const COL5_ROWS = [2, 4, 6, 8]; // angled col uses even rows only
+const ANGLED_COL = 5;
+const MAX_ROWS = 8;
+
+function spotId(row, col) {
+  return `R${row}-C${col}`;
+}
+
+// Build all spot definitions
+const ALL_SPOTS = [];
+for (let col = 1; col <= 4; col++) {
+  const maxRow = COL_ROWS[col];
+  for (let row = 1; row <= maxRow; row++) {
+    ALL_SPOTS.push({ id: spotId(row, col), row, col });
+  }
+}
+// Col 5: even rows only
+COL5_ROWS.forEach(row => {
+  ALL_SPOTS.push({ id: spotId(row, 5), row, col: 5 });
+});
+const SMAP = {};
+ALL_SPOTS.forEach(s => SMAP[s.id] = s);
+const TOTAL_SPOTS = ALL_SPOTS.length; // 30
+
+// ── State ───────────────────────────────────────────────
+let buses = [
+  {id:1,num:'20'},{id:2,num:'21'},{id:3,num:'22'},{id:4,num:'23'},
+  {id:5,num:'24'},{id:6,num:'25'},{id:7,num:'26'},{id:8,num:'27'},
+  {id:9,num:'28'},{id:10,num:'29'},{id:11,num:'30'},{id:12,num:'31'},
+  {id:13,num:'32'},{id:14,num:'33'},{id:15,num:'34'},{id:16,num:'35'},
+  {id:17,num:'40'},{id:18,num:'41'},{id:19,num:'42'},{id:20,num:'43'},
+  {id:21,num:'44'},{id:22,num:'45'},{id:23,num:'46'},{id:24,num:'47'},
+  {id:25,num:'48'},{id:26,num:'49'},{id:27,num:'51'},{id:28,num:'52'},
+  {id:29,num:'80'},{id:30,num:'81'},
+];
+let nextId = 31;
+let assignments = {}; // spotId → busNum (string)
+let dragBusNum = null;
+let dragFromSpot = null;
+let saveTimer = null;
+
+// ── Date ────────────────────────────────────────────────
+const DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const now = new Date();
+const dateStr = `${DAYS[now.getDay()]} · ${MONTHS[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
+document.getElementById('dateBadge').textContent = dateStr;
+document.getElementById('modalDate').textContent = dateStr;
+
+// ── Sync indicator ──────────────────────────────────────
+function setSyncStatus(status) { // 'syncing' | 'ok' | 'err' | 'idle'
+  const dot = document.getElementById('syncDot');
+  dot.className = 'sync-dot' + (status !== 'idle' ? ' ' + status : '');
+  dot.title = status === 'ok' ? 'Saved' : status === 'err' ? 'Save failed' : status === 'syncing' ? 'Saving…' : 'Ready';
+}
+
+// ── Google Sheets read ──────────────────────────────────
+async function loadFromSheet() {
+  setSyncStatus('syncing');
+  try {
+    const res = await fetch(SHEET_URL + '&cachebust=' + Date.now());
+    const text = await res.text();
+    const rows = text.trim().split('\n').slice(1); // skip header
+    assignments = {};
+    rows.forEach(line => {
+      // CSV: "spot_id","bus_number"
+      const cols = line.split(',').map(c => c.replace(/^"|"$/g,'').trim());
+      if (cols[0] && cols[1] && cols[0] !== 'spot_id') {
+        assignments[cols[0]] = cols[1];
+      }
+    });
+    setSyncStatus('ok');
+    renderGrid();
+    renderChips();
+  } catch(e) {
+    setSyncStatus('err');
+    console.error('Load error:', e);
+  }
+}
+
+// ── Google Sheets write (Apps Script needed for writes) ─
+// Since direct Sheets API writes require OAuth, we use a
+// published Google Apps Script Web App as a write proxy.
+// The URL below should be replaced with your deployed script URL.
+// Instructions are shown in the assignment list if not configured.
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwW_AjyYQyyFz0c-ntjQay74xVcxQQU1mnI1CB5ep7bOKoS9GiUivr5vJ4sGkDbSzNy/exec';
+
+async function saveToSheet() {
+  if (!APPS_SCRIPT_URL) {
+    setSyncStatus('err');
+    return;
+  }
+  setSyncStatus('syncing');
+  try {
+    // Build array of rows
+    const rows = [['spot_id','bus_number']];
+    Object.keys(assignments).forEach(sid => {
+      rows.push([sid, assignments[sid]]);
+    });
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sheetId: SHEET_ID, tab: SHEET_TAB, rows })
+    });
+    const json = await res.json();
+    setSyncStatus(json.status === 'ok' ? 'ok' : 'err');
+  } catch(e) {
+    setSyncStatus('err');
+    console.error('Save error:', e);
+  }
+}
+
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  if (!APPS_SCRIPT_URL) {
+    setSyncStatus('err');
+    return;
+  }
+  saveTimer = setTimeout(saveToSheet, 800);
+}
+
+// ── Build grid DOM ──────────────────────────────────────
+function renderGrid() {
+  const wrap = document.getElementById('lotWrap');
+  wrap.innerHTML = '';
+
+  // Wilder Road label
+  const wl = document.createElement('div');
+  wl.className = 'wilder-label';
+  wl.textContent = '◄ Wilder Road';
+  wrap.appendChild(wl);
+
+  // Row labels (col 1 left side)
+  const rlCol = document.createElement('div');
+  rlCol.className = 'row-labels';
+  // phantom top spacer matching col-header height
+  const rlt = document.createElement('div');
+  rlt.className = 'row-label-top';
+  rlCol.appendChild(rlt);
+  for (let r = 1; r <= MAX_ROWS; r++) {
+    const rli = document.createElement('div');
+    rli.className = 'row-label-item';
+    rli.textContent = `R${r}`;
+    rlCol.appendChild(rli);
+  }
+  wrap.appendChild(rlCol);
+
+  // Main grid
+  const grid = document.createElement('div');
+  grid.className = 'lot-grid';
+
+  for (let col = 1; col <= 5; col++) {
+    // Aisle dots between cols (not before col 1)
+    if (col > 1) {
+      const aisle = document.createElement('div');
+      aisle.className = 'col-aisle';
+      for (let i = 0; i < 14; i++) {
+        const d = document.createElement('div');
+        d.className = 'aisle-dot';
+        aisle.appendChild(d);
+      }
+      grid.appendChild(aisle);
+    }
+
+    const colEl = document.createElement('div');
+    colEl.className = 'lot-col' + (col === ANGLED_COL ? ' angled' : '');
+
+    // Column header
+    const ch = document.createElement('div');
+    ch.className = 'col-header';
+    ch.textContent = col === ANGLED_COL ? 'C5' : `C${col}`;
+    colEl.appendChild(ch);
+
+    // Spots for this col (column-reverse means row1 at bottom)
+    if (col === ANGLED_COL) {
+      // Col 5: spots at even rows (2,4,6,8), phantoms at odd rows (1,3,5,7)
+      for (let row = 1; row <= MAX_ROWS; row++) {
+        if (COL5_ROWS.includes(row)) {
+          colEl.appendChild(makeSpot(spotId(row, col)));
+        } else {
+          const ph = document.createElement('div');
+          ph.style.cssText = 'width:52px;height:52px;flex-shrink:0;visibility:hidden;';
+          colEl.appendChild(ph);
+        }
+      }
+    } else {
+      const maxRow = COL_ROWS[col];
+      for (let row = 1; row <= maxRow; row++) {
+        colEl.appendChild(makeSpot(spotId(row, col)));
+      }
+      // Phantom spots to fill height gap (cols 1-3 shorter than col 4)
+      if (col < 4) {
+        for (let r = maxRow + 1; r <= MAX_ROWS; r++) {
+          const ph = document.createElement('div');
+          ph.style.cssText = 'width:52px;height:52px;flex-shrink:0;visibility:hidden;';
+          colEl.appendChild(ph);
+        }
+      }
+    }
+
+    grid.appendChild(colEl);
+  }
+
+  wrap.appendChild(grid);
+
+  // Entrance label bottom
+  const inner = document.createElement('div');
+  inner.style.cssText = 'display:flex;flex-direction:column;width:100%;';
+  const el = document.createElement('div');
+  el.className = 'entrance-label';
+  el.textContent = '▼  Happiness Hill Entrance  ▼';
+  wrap.appendChild(el);
+}
+
+// ── Spot element ────────────────────────────────────────
+function makeSpot(sid, extraClass) {
+  const busNum = assignments[sid];
+  const info   = SMAP[sid];
+
+  const el = document.createElement('div');
+  el.className = 'spot' + (busNum ? ' filled' : '') + (extraClass ? ' '+extraClass : '');
+  el.dataset.spotId = sid;
+
+  if (busNum) {
+    el.draggable = true;
+    el.innerHTML = `<div class="spot-id">${sid}</div>
+      <div class="spot-bus-num">${busNum}</div>`;
+    el.addEventListener('dragstart', e => {
+      dragBusNum = busNum; dragFromSpot = sid;
+      e.dataTransfer.effectAllowed = 'move';
+      setTimeout(() => el.style.opacity = '0.2', 0);
+    });
+    el.addEventListener('dragend', () => el.style.opacity = '');
+  } else {
+    el.innerHTML = `<div class="spot-id">${sid}</div>
+      <div class="spot-empty-icon">🚌</div>
+      <div class="spot-empty-label">Empty</div>`;
+  }
+
+  el.addEventListener('dragover',  e => { e.preventDefault(); el.classList.add('drag-over'); });
+  el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+  el.addEventListener('drop', e => {
+    e.preventDefault(); el.classList.remove('drag-over');
+    if (dragBusNum) doAssign(dragBusNum, sid);
+  });
+  el.addEventListener('touchstart', onSpotTouchStart, {passive:false});
+
+  return el;
+}
+
+// ── Assign / Remove ──────────────────────────────────────
+function doAssign(busNum, toSpot) {
+  // Remove this bus from any current spot
+  Object.keys(assignments).forEach(k => {
+    if (assignments[k] === busNum) delete assignments[k];
+  });
+  // Swap if destination occupied and we came from a spot
+  const displaced = assignments[toSpot];
+  if (displaced && dragFromSpot) {
+    assignments[dragFromSpot] = displaced;
+  } else if (displaced) {
+    delete assignments[toSpot];
+  }
+  assignments[toSpot] = busNum;
+  dragBusNum = null; dragFromSpot = null;
+  renderGrid(); renderChips();
+  scheduleSave();
+}
+
+function removeSpot(sid) {
+  if (locked) return;
+  delete assignments[sid];
+  renderGrid(); renderChips();
+  scheduleSave();
+}
+// ── Touch drag ───────────────────────────────────────────
+let touchGhost = null;
+let touchBusNum = null;
+let touchFromSpot = null;
+
+function onSpotTouchStart(e) {
+  const spot = e.currentTarget;
+  const sid  = spot.dataset.spotId;
+  const bNum = assignments[sid];
+  if (!bNum) return;
+  e.preventDefault();
+  touchBusNum = bNum; touchFromSpot = sid;
+  spawnGhost(e.touches[0], bNum);
+  document.addEventListener('touchmove',  onGlobalTouchMove,  {passive:false});
+  document.addEventListener('touchend',   onGlobalTouchEnd,   {passive:false});
+}
+
+function spawnGhost(touch, label) {
+  const g = document.createElement('div');
+  g.id = 'touchGhost';
+  g.textContent = label;
+  g.style.cssText = `position:fixed;z-index:9999;pointer-events:none;
+    font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1.3rem;
+    color:#111;background:var(--accent);border-radius:18px;
+    padding:5px 13px;opacity:0.92;transform:translate(-50%,-50%);
+    left:${touch.clientX}px;top:${touch.clientY}px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.55);`;
+  document.body.appendChild(g);
+  touchGhost = g;
+}
+function onGlobalTouchMove(e) {
+  if (!touchGhost) return;
+  e.preventDefault();
+  const t = e.touches[0];
+  touchGhost.style.left = t.clientX + 'px';
+  touchGhost.style.top  = t.clientY + 'px';
+  document.querySelectorAll('.spot.drag-over').forEach(el => el.classList.remove('drag-over'));
+  const under = document.elementFromPoint(t.clientX, t.clientY);
+  const spotEl = under ? under.closest('.spot') : null;
+  if (spotEl) spotEl.classList.add('drag-over');
+}
+function onGlobalTouchEnd(e) {
+  document.removeEventListener('touchmove', onGlobalTouchMove);
+  document.removeEventListener('touchend',  onGlobalTouchEnd);
+  if (touchGhost) { touchGhost.remove(); touchGhost = null; }
+  document.querySelectorAll('.spot.drag-over').forEach(el => el.classList.remove('drag-over'));
+  const t = e.changedTouches[0];
+  const under = document.elementFromPoint(t.clientX, t.clientY);
+  const spotEl = under ? under.closest('.spot') : null;
+  if (spotEl && touchBusNum) {
+    dragBusNum = touchBusNum; dragFromSpot = touchFromSpot;
+    doAssign(touchBusNum, spotEl.dataset.spotId);
+  }
+  touchBusNum = null; touchFromSpot = null;
+}
+
+// ── Chips ────────────────────────────────────────────────
+function renderChips() {
+  const placed  = new Set(Object.values(assignments));
+  const chips   = document.getElementById('busChips');
+  chips.innerHTML = '';
+
+  buses.forEach(b => {
+    const isPlaced = placed.has(b.num);
+    const chip = document.createElement('div');
+    chip.className = 'bus-chip' + (isPlaced ? ' placed' : '');
+    chip.innerHTML = `<div class="chip-num${isPlaced?' placed':''}">${b.num}</div>
+      <div class="chip-dot${isPlaced?' ok':''}"></div>`;
+
+    if (!isPlaced) {
+      chip.draggable = true;
+      chip.addEventListener('dragstart', e => {
+        dragBusNum = b.num; dragFromSpot = null;
+        chip.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      chip.addEventListener('dragend', () => chip.classList.remove('dragging'));
+
+      // Touch from chip
+      chip.addEventListener('touchstart', e => {
+        e.preventDefault();
+        touchBusNum = b.num; touchFromSpot = null;
+        spawnGhost(e.touches[0], b.num);
+        document.addEventListener('touchmove', onGlobalTouchMove, {passive:false});
+        document.addEventListener('touchend',  onGlobalTouchEnd,  {passive:false});
+      }, {passive:false});
+    }
+    chips.appendChild(chip);
+  });
+  updateStats();
+}
+
+function updateStats() {
+  const p = Object.keys(assignments).length;
+  document.getElementById('statTotal').textContent  = buses.length;
+  document.getElementById('statPlaced').textContent = p;
+  document.getElementById('statOpen').textContent   = TOTAL_SPOTS - p;
+}
+
+// ── Add Bus ──────────────────────────────────────────────
+function addBus() {
+  const num = document.getElementById('addNum').value.trim();
+  if (!num) return;
+  if (!buses.find(b => b.num === num)) buses.push({id: nextId++, num});
+  document.getElementById('addNum').value = '';
+  renderChips();
+}
+document.getElementById('addNum').addEventListener('keydown', e => { if(e.key==='Enter') addBus(); });
+
+// ── Lock ─────────────────────────────────────────────────
+let locked = false;
+function toggleLock() {
+  locked = !locked;
+  const btn = document.getElementById('lockBtn');
+  btn.textContent = locked ? '🔒' : '🔓';
+  btn.classList.toggle('locked', locked);
+  btn.title = locked ? 'Locked — drag to move, tap to unlock' : 'Unlocked — tap to lock';
+  // Hide/show chip tray when locked
+  document.getElementById('busChips').style.opacity       = locked ? '0.35' : '1';
+  document.getElementById('busChips').style.pointerEvents = locked ? 'none' : '';
+  document.querySelector('.tray-add').style.opacity       = locked ? '0.35' : '1';
+  document.querySelector('.tray-add').style.pointerEvents = locked ? 'none' : '';
+  // Re-render so spots reflect lock state (no remove hint when locked)
+  renderGrid();
+}
+
+// ── Share / Copy ─────────────────────────────────────────
+function openShare() {
+  const list = document.getElementById('shareList');
+  list.innerHTML = '';
+
+  const sorted = Object.keys(assignments).sort((a,b) => {
+    const [ar,ac] = a.replace('R','').split('-C').map(Number);
+    const [br,bc] = b.replace('R','').split('-C').map(Number);
+    return ac !== bc ? ac - bc : ar - br;
+  });
+
+  if (!sorted.length) {
+    list.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;padding:8px 0">No buses assigned yet.</div>';
+  } else {
+    // Show Apps Script setup notice if not configured
+    if (!APPS_SCRIPT_URL) {
+      const notice = document.createElement('div');
+      notice.style.cssText = 'background:#1a1505;border:1px solid var(--accent);border-radius:5px;padding:8px 10px;margin-bottom:8px;font-size:0.7rem;color:var(--accent);line-height:1.5;';
+      notice.innerHTML = `<strong>⚠ Read-only mode.</strong> To enable live saving to Google Sheets, deploy an Apps Script (see instructions). Map is currently session-only.`;
+      list.appendChild(notice);
+    }
+    sorted.forEach(sid => {
+      const busNum = assignments[sid];
+      const div = document.createElement('div');
+      div.className = 'share-row';
+      div.innerHTML = `<div class="share-spot">${sid}</div><div class="share-bus">${busNum}</div>`;
+      list.appendChild(div);
+    });
+  }
+  document.getElementById('overlay').classList.add('open');
+}
+
+document.getElementById('overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('overlay'))
+    document.getElementById('overlay').classList.remove('open');
+});
+
+function copyList() {
+  const lines = [`BUS ASSIGNMENTS — ${dateStr}`, '─────────────────────'];
+  Object.keys(assignments).sort().forEach(sid => {
+    lines.push(`${sid}:  Bus ${assignments[sid]}`);
+  });
+  navigator.clipboard.writeText(lines.join('\n'))
+    .then(()=>alert('✓ Copied!')).catch(()=>alert('Copy failed.'));
+}
+
+// ── Init ─────────────────────────────────────────────────
+renderGrid();
+renderChips();
+loadFromSheet();
+
+// Poll for changes every 30 seconds (keeps map in sync across devices)
+setInterval(loadFromSheet, 30000);
+</script>
+</body>
+</html>
