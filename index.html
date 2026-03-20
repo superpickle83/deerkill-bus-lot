@@ -166,8 +166,11 @@
     transform: skewY(-8deg);
   }
   .lot-col.angled .spot.filled {
-    border-color: rgba(34,197,94,0.5);
-    background: #0a1a10;
+    border-color: rgba(245,166,35,0.7);
+    background: #1e1508;
+  }
+  .lot-col.angled .spot.filled .spot-bus-num {
+    color: var(--accent);
   }
   .lot-col.angled .spot .spot-bus-num { transform: skewY(8deg); }
   .lot-col.angled .spot .spot-id      { transform: skewY(8deg); }
@@ -444,7 +447,7 @@ const WRITE_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/values/${e
   Wilder Road on LEFT, Happiness Hill at BOTTOM
 */
 const COL_ROWS = { 1:5, 2:6, 3:7, 4:8 };
-const COL5_ROWS = [2, 4, 6, 8]; // angled col uses even rows only
+const COL5_ROWS = [1, 2, 3, 4, 5, 6, 7, 8]; // all rows in angled col
 const ANGLED_COL = 5;
 const MAX_ROWS = 8;
 
@@ -460,13 +463,13 @@ for (let col = 1; col <= 4; col++) {
     ALL_SPOTS.push({ id: spotId(row, col), row, col });
   }
 }
-// Col 5: even rows only
+// Col 5: all 8 rows (angled)
 COL5_ROWS.forEach(row => {
   ALL_SPOTS.push({ id: spotId(row, 5), row, col: 5 });
 });
 const SMAP = {};
 ALL_SPOTS.forEach(s => SMAP[s.id] = s);
-const TOTAL_SPOTS = ALL_SPOTS.length; // 30
+const TOTAL_SPOTS = ALL_SPOTS.length; // 34 (5+6+7+8+8)
 
 // ── State ───────────────────────────────────────────────
 let buses = [
@@ -638,15 +641,9 @@ function renderGrid() {
 
     // Spots for this col (column-reverse means row1 at bottom)
     if (col === ANGLED_COL) {
-      // Col 5: spots at even rows (2,4,6,8), phantoms at odd rows (1,3,5,7)
+      // Col 5: all 8 rows are real spots
       for (let row = 1; row <= MAX_ROWS; row++) {
-        if (COL5_ROWS.includes(row)) {
-          colEl.appendChild(makeSpot(spotId(row, col)));
-        } else {
-          const ph = document.createElement('div');
-          ph.style.cssText = 'width:62px;height:62px;flex-shrink:0;visibility:hidden;';
-          colEl.appendChild(ph);
-        }
+        colEl.appendChild(makeSpot(spotId(row, col)));
       }
     } else {
       const maxRow = COL_ROWS[col];
@@ -898,9 +895,10 @@ function openShare() {
     list.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;padding:8px 0">No buses assigned yet.</div>';
   } else {
     entries.forEach(({ sid, busNum }) => {
+      const isAngled = sid.endsWith('-C5');
       const div = document.createElement('div');
       div.className = 'share-row';
-      div.innerHTML = `<div class="share-bus">${busNum}</div><div class="share-spot">${friendlySpot(sid)}</div>`;
+      div.innerHTML = `<div class="share-bus" style="${isAngled ? 'color:var(--accent)' : ''}">${busNum}</div><div class="share-spot" style="${isAngled ? 'color:var(--accent)' : ''}">${friendlySpot(sid)}${isAngled ? ' ∠' : ''}</div>`;
       list.appendChild(div);
     });
   }
@@ -917,7 +915,7 @@ function copyList() {
   Object.keys(assignments)
     .map(sid => ({ sid, busNum: assignments[sid] }))
     .sort((a, b) => parseInt(a.busNum) - parseInt(b.busNum))
-    .forEach(({ sid, busNum }) => lines.push(`Bus ${busNum}:  ${friendlySpot(sid)}`));
+    .forEach(({ sid, busNum }) => lines.push(`Bus ${busNum}:  ${friendlySpot(sid)}${sid.endsWith('-C5') ? ' (angled)' : ''}`));
   navigator.clipboard.writeText(lines.join('\n'))
     .then(()=>alert('✓ Copied!')).catch(()=>alert('Copy failed.'));
 }
