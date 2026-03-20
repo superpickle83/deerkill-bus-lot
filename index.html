@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -342,7 +341,7 @@
   }
   .share-spot {
     font-family:'Barlow Condensed',sans-serif; font-size:0.8125rem; font-weight:700;
-    letter-spacing:0.08em; color:var(--muted); min-width:80px; text-transform:uppercase;
+    letter-spacing:0.08em; color:var(--muted); min-width:160px; text-transform:uppercase;
   }
   .share-bus { font-family:'Barlow Condensed',sans-serif; font-size:1.4375rem; font-weight:900; color:var(--accent); }
   .modal-btns { display:flex; gap:6px; justify-content:flex-end; }
@@ -873,12 +872,24 @@ function toggleLock() {
   }
 }
 
+// ── Ordinal helper ────────────────────────────────────────
+function ordinal(n) {
+  const s = ['th','st','nd','rd'];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+function friendlySpot(sid) {
+  // sid format: R[row]-C[col]  e.g. R4-C2
+  const match = sid.match(/R(\d+)-C(\d+)/);
+  if (!match) return sid;
+  return `${ordinal(parseInt(match[1]))} Row — ${ordinal(parseInt(match[2]))} Bus`;
+}
+
 // ── Share / Copy ─────────────────────────────────────────
 function openShare() {
   const list = document.getElementById('shareList');
   list.innerHTML = '';
 
-  // Build array of {busNum, spotId} sorted by bus number numerically
   const entries = Object.keys(assignments)
     .map(sid => ({ sid, busNum: assignments[sid] }))
     .sort((a, b) => parseInt(a.busNum) - parseInt(b.busNum));
@@ -889,7 +900,7 @@ function openShare() {
     entries.forEach(({ sid, busNum }) => {
       const div = document.createElement('div');
       div.className = 'share-row';
-      div.innerHTML = `<div class="share-bus">${busNum}</div><div class="share-spot">${sid}</div>`;
+      div.innerHTML = `<div class="share-bus">${busNum}</div><div class="share-spot">${friendlySpot(sid)}</div>`;
       list.appendChild(div);
     });
   }
@@ -906,7 +917,7 @@ function copyList() {
   Object.keys(assignments)
     .map(sid => ({ sid, busNum: assignments[sid] }))
     .sort((a, b) => parseInt(a.busNum) - parseInt(b.busNum))
-    .forEach(({ sid, busNum }) => lines.push(`Bus ${busNum}:  ${sid}`));
+    .forEach(({ sid, busNum }) => lines.push(`Bus ${busNum}:  ${friendlySpot(sid)}`));
   navigator.clipboard.writeText(lines.join('\n'))
     .then(()=>alert('✓ Copied!')).catch(()=>alert('Copy failed.'));
 }
