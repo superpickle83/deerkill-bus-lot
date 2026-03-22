@@ -111,9 +111,17 @@
     border-radius: 10px;
     padding: 8px 10px 10px;
     display: inline-flex;
-    flex-direction: row;
+    flex-direction: column;
     gap: 0;
+    align-items: stretch;
+  }
+
+  /* Row inside lot-wrap: Wilder Road + row labels + grid all in a row */
+  .lot-inner {
+    display: flex;
+    flex-direction: row;
     align-items: flex-end;
+    gap: 0;
   }
 
   /* Left edge label — Wilder Road */
@@ -187,7 +195,7 @@
     align-items: flex-end;
   }
   .row-label-item {
-    height: 59px;
+    height: 56px;
     display: flex; align-items: center; justify-content: flex-end;
     font-family: 'Barlow Condensed', sans-serif;
     font-size: 0.665rem; font-weight: 700;
@@ -220,7 +228,7 @@
 
   /* SPOT */
   .spot {
-    width: 59px; height: 59px;
+    width: 56px; height: 56px;
     border-radius: 4px;
     border: 2px dashed #1e2438;
     background: #10131c;
@@ -253,7 +261,7 @@
   }
   .spot-bus-num {
     font-family: 'Barlow Condensed', sans-serif;
-    font-size: 1.46rem; font-weight: 900;
+    font-size: 1.39rem; font-weight: 900;
     color: var(--green); line-height: 1;
   }
   .spot-empty-icon  { font-size: 0.79rem; opacity: 0.08; }
@@ -673,16 +681,19 @@ function renderGrid() {
   const wrap = document.getElementById('lotWrap');
   wrap.innerHTML = '';
 
+  // Inner row: Wilder Road + row labels + grid columns
+  const inner = document.createElement('div');
+  inner.className = 'lot-inner';
+
   // Wilder Road label
   const wl = document.createElement('div');
   wl.className = 'wilder-label';
   wl.textContent = '◄ Wilder Road';
-  wrap.appendChild(wl);
+  inner.appendChild(wl);
 
   // Row labels (col 1 left side)
   const rlCol = document.createElement('div');
   rlCol.className = 'row-labels';
-  // phantom top spacer matching col-header height
   const rlt = document.createElement('div');
   rlt.className = 'row-label-top';
   rlCol.appendChild(rlt);
@@ -692,14 +703,13 @@ function renderGrid() {
     rli.textContent = `R${r}`;
     rlCol.appendChild(rli);
   }
-  wrap.appendChild(rlCol);
+  inner.appendChild(rlCol);
 
   // Main grid
   const grid = document.createElement('div');
   grid.className = 'lot-grid';
 
   for (let col = 1; col <= 5; col++) {
-    // Aisle dots between cols (not before col 1)
     if (col > 1) {
       const aisle = document.createElement('div');
       aisle.className = 'col-aisle';
@@ -714,15 +724,12 @@ function renderGrid() {
     const colEl = document.createElement('div');
     colEl.className = 'lot-col' + (col === ANGLED_COL ? ' angled' : '');
 
-    // Column header
     const ch = document.createElement('div');
     ch.className = 'col-header';
     ch.textContent = col === ANGLED_COL ? 'C5' : `C${col}`;
     colEl.appendChild(ch);
 
-    // Spots for this col (column-reverse means row1 at bottom)
     if (col === ANGLED_COL) {
-      // Col 5: all 8 rows are real spots
       for (let row = 1; row <= MAX_ROWS; row++) {
         colEl.appendChild(makeSpot(spotId(row, col)));
       }
@@ -731,34 +738,25 @@ function renderGrid() {
       for (let row = 1; row <= maxRow; row++) {
         colEl.appendChild(makeSpot(spotId(row, col)));
       }
-      // Phantom spots to fill height gap (cols 1-3 shorter than col 4)
       if (col < 4) {
         for (let r = maxRow + 1; r <= MAX_ROWS; r++) {
           const ph = document.createElement('div');
-          ph.style.cssText = 'width:59px;height:59px;flex-shrink:0;visibility:hidden;';
+          ph.style.cssText = 'width:56px;height:56px;flex-shrink:0;visibility:hidden;';
           colEl.appendChild(ph);
         }
       }
     }
-
     grid.appendChild(colEl);
   }
 
-  wrap.appendChild(grid);
+  inner.appendChild(grid);
+  wrap.appendChild(inner);
 
-  // Entrance label — sits below the full width of the grid
+  // Entrance label — outside inner, so it sits BELOW the full grid row
   const el = document.createElement('div');
   el.className = 'entrance-label';
   el.textContent = '▼  Happiness Hill Entrance  ▼';
-
-  // Wrap grid + entrance in a column so label is truly below
-  // We do this by restructuring: remove grid from wrap, make a column wrapper
-  wrap.removeChild(grid);
-  const colWrap = document.createElement('div');
-  colWrap.style.cssText = 'display:flex;flex-direction:column;align-items:stretch;gap:0;';
-  colWrap.appendChild(grid);
-  colWrap.appendChild(el);
-  wrap.appendChild(colWrap);
+  wrap.appendChild(el);
 }
 
 // ── Spot element ────────────────────────────────────────
