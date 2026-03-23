@@ -306,7 +306,8 @@
   input::placeholder { color: var(--muted); }
   .bus-chips {
     display: flex; flex-wrap: wrap; gap: 4px;
-    padding: 7px 8px; overflow-y: auto;
+    padding: 7px 8px 32px 8px; /* 32px bottom buffer prevents OS swipe-up conflict */
+    overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
   .bus-chip {
@@ -933,7 +934,7 @@ function updateTraySize() {
   } else {
     // Measure actual chips container content height and add header
     const chipsEl   = document.getElementById('busChips');
-    const padded    = chipsEl.scrollHeight + header + 16; // 16px padding buffer
+    const padded    = chipsEl.scrollHeight + header + 16; // 16px padding buffer (bottom padding already in scrollHeight)
     const maxPixels = Math.round(window.innerHeight * 0.36); // never exceed 36vh
     tray.style.maxHeight = Math.min(padded, maxPixels) + 'px';
   }
