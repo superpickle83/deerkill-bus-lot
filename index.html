@@ -413,7 +413,9 @@ async function loadUpperFromSheet(isInitial=false){
       const cols=line.split(',').map(c=>c.replace(/^"|"$/g,'').trim());
       if(cols[0]&&cols[0]!=='bus_number'&&(cols[1]||'').toUpperCase()==='TRUE') loaded.add(cols[0]);
     });
+    // Always apply on initial load or forced refresh; otherwise only if sheet has more data
     if(isInitial||loaded.size>=upperArrivals.size){upperArrivals=loaded;renderUpperLot();}
+    else if(loaded.size>0){upperArrivals=loaded;renderUpperLot();}
   }catch(e){console.error(e);}
 }
 
@@ -778,10 +780,18 @@ async function manualRefresh(){
   const btn=document.querySelector('button[onclick="manualRefresh()"]');
   btn.style.transform='rotate(360deg)';btn.style.transition='transform 0.5s ease';
   setTimeout(()=>{btn.style.transform='';btn.style.transition='';},500);
+  // Reload bus list first, then force-clear state and reload both sheets
   await loadBusList();
+  assignments={};
+  upperArrivals=new Set();
   await Promise.all([loadFromSheet(true),loadUpperFromSheet(true)]);
-  renderUpperLot();checkCompletion();updateOutstandingBadge();
-  if(activeTab==='outstanding')renderOutstanding();
+  // Re-render everything with the updated bus list
+  renderGrid();
+  renderChips();
+  renderUpperLot();
+  checkCompletion();
+  updateOutstandingBadge();
+  if(activeTab==='outstanding') renderOutstanding();
 }
 
 // ── INIT ─────────────────────────────────────────────────
