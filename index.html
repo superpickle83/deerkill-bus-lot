@@ -419,11 +419,14 @@ async function loadUpperFromSheet(isInitial=false){
 }
 
 async function saveUpperToSheet(){
+  // Write only the arrived buses (sparse), same pattern as lower lot.
+  // This prevents an empty upperHoboken/upperNYC list (e.g. if loadBusList
+  // hasn't completed yet) from overwriting the sheet with just a header row.
   if(!APPS_SCRIPT_URL) return;
   isUpperSaving=true;setSyncStatus('syncing');
   try{
     const rows=[['bus_number','arrived']];
-    [...upperHoboken,...upperNYC].forEach(num=>rows.push([num,upperArrivals.has(num)?'TRUE':'FALSE']));
+    [...upperArrivals].sort((a,b)=>parseInt(a)-parseInt(b)).forEach(num=>rows.push([num,'TRUE']));
     await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({sheetId:SHEET_ID,tab:UPPER_TAB,rows})});
     setSyncStatus('ok');
   }catch(e){setSyncStatus('err');}
@@ -733,10 +736,9 @@ async function midnightReset(){
   try{
     await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({sheetId:SHEET_ID,tab:LOWER_TAB,rows:[['bus_number','spot_id']]})});
-    const upperRows=[['bus_number','arrived']];
-    [...upperHoboken,...upperNYC].forEach(num=>upperRows.push([num,'FALSE']));
+    // Just write the header — clears all arrivals without needing bus list loaded
     await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({sheetId:SHEET_ID,tab:UPPER_TAB,rows:upperRows})});
+      body:JSON.stringify({sheetId:SHEET_ID,tab:UPPER_TAB,rows:[['bus_number','arrived']]})});
   }catch(e){
     console.error('[Midnight] Sheet clear failed:',e);
   }
