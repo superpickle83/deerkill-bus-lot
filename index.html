@@ -421,34 +421,13 @@ async function loadUpperFromSheet(isInitial=false){
 async function saveUpperToSheet(){
   if(!APPS_SCRIPT_URL) return;
   isUpperSaving=true;setSyncStatus('syncing');
-  const rows=[['bus_number','arrived']];
-  [...upperArrivals].sort((a,b)=>parseInt(a)-parseInt(b)).forEach(num=>rows.push([num,'TRUE']));
-  const payload=JSON.stringify({sheetId:SHEET_ID,tab:UPPER_TAB,rows});
-  console.log('[UpperSave] arrivals=',JSON.stringify([...upperArrivals]),'payload=',payload);
-  setDebugMsg('Saving: '+JSON.stringify([...upperArrivals]));
   try{
-    const res=await fetch(APPS_SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:payload});
-    const text=await res.text();
-    console.log('[UpperSave] response',res.status,text);
-    setDebugMsg('Saved OK '+res.status+': '+text);
+    const rows=[['bus_number','arrived']];
+    [...upperArrivals].sort((a,b)=>parseInt(a)-parseInt(b)).forEach(num=>rows.push([num,'TRUE']));
+    await fetch(APPS_SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({sheetId:SHEET_ID,tab:UPPER_TAB,rows})});
     setSyncStatus('ok');
-  }catch(e){
-    console.error('[UpperSave] error',e);
-    setDebugMsg('Save ERROR: '+e.message);
-    setSyncStatus('err');
-  }
+  }catch(e){setSyncStatus('err');}
   finally{isUpperSaving=false;}
-}
-
-function setDebugMsg(msg){
-  let el=document.getElementById('upperDebug');
-  if(!el){
-    el=document.createElement('div');
-    el.id='upperDebug';
-    el.style.cssText='position:fixed;bottom:0;left:0;right:0;background:#1a0a00;color:#f5a623;font-family:monospace;font-size:0.7rem;padding:4px 8px;z-index:9999;border-top:1px solid #f5a623;word-break:break-all;';
-    document.body.appendChild(el);
-  }
-  el.textContent=msg;
 }
 
 function scheduleUpperSave(){clearTimeout(upperSaveTimer);upperSaveTimer=setTimeout(saveUpperToSheet,800);}
