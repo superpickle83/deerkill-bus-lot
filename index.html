@@ -681,10 +681,11 @@ function renderArrivalGrid(gridId,busNums){
   const grid=document.getElementById(gridId);grid.innerHTML='';
   busNums.forEach(num=>{
     const arrived=upperArrivals.has(num);
-    const card=document.createElement('div');card.className='arrival-card'+(arrived?' arrived':'');
-    card.innerHTML=`<div class="arrival-num">${num}</div><div class="arrival-check">✅</div><div class="arrival-pending">Pending</div>`;
-    card.addEventListener('click',()=>toggleArrival(num));
-    grid.appendChild(card);
+    // Use onclick attribute so it fires reliably on all browsers/devices
+    // pointer-events:none on children ensures the card itself gets the click
+    grid.innerHTML+=`<div class="arrival-card${arrived?' arrived':''}" onclick="toggleArrival('${num}')" style="pointer-events:auto">
+      <div style="pointer-events:none"><div class="arrival-num">${num}</div><div class="arrival-check">✅</div><div class="arrival-pending">Pending</div></div>
+    </div>`;
   });
 }
 
