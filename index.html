@@ -65,7 +65,7 @@
   .panel { display:none; flex:1; flex-direction:column; min-height:0; overflow:hidden; }
   .panel.active { display:flex; }
 
-  /* ══ LOWER LOT ══ */
+  /* LOWER LOT */
   .map-area { flex:1; overflow:auto; padding:10px 8px 6px; display:flex; flex-direction:column; align-items:center; gap:6px; -webkit-overflow-scrolling:touch; min-height:0; }
   .stats-bar { display:flex; gap:10px; align-items:center; font-family:'Barlow Condensed',sans-serif; font-size:0.9rem; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted); flex-shrink:0; }
   .stat-val { color:var(--text); font-size:1.125rem; font-weight:900; }
@@ -101,7 +101,7 @@
   .spot-remove { position:absolute; top:2px; right:3px; font-size:0.495rem; color:var(--red); opacity:0; transition:opacity 0.12s; font-weight:700; font-family:'Barlow Condensed',sans-serif; }
   .spot.filled:hover .spot-remove { opacity:1; }
 
-  /* BUS TRAY — always visible, fixed height */
+  /* BUS TRAY */
   .bus-tray { flex-shrink:0; background:var(--surface); border-top:2px solid var(--border); display:flex; flex-direction:column; height:38vh; transition:height 0.3s ease; }
   .bus-tray.collapsed { height:44px; }
   .tray-header { height:44px; padding:0 10px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); flex-shrink:0; }
@@ -124,7 +124,7 @@
   .loading-overlay .spin { font-size:2rem; animation:lspin 1s linear infinite; display:inline-block; }
   @keyframes lspin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
 
-  /* ══ UPPER LOT ══ */
+  /* UPPER LOT */
   .upper-area { flex:1; overflow-y:auto; padding:12px 12px 24px; display:flex; flex-direction:column; gap:16px; -webkit-overflow-scrolling:touch; }
   .upper-stats { display:flex; gap:10px; align-items:center; font-family:'Barlow Condensed',sans-serif; font-size:0.9rem; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted); flex-shrink:0; }
   .upper-section { display:flex; flex-direction:column; gap:8px; }
@@ -145,7 +145,7 @@
   .upper-tray { flex-shrink:0; background:var(--surface); border-top:2px solid var(--border); padding:7px 10px 8px; display:flex; align-items:center; justify-content:space-between; gap:8px; }
   .upper-tray-label { font-family:'Barlow Condensed',sans-serif; font-size:0.75rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); }
 
-  /* ══ OUTSTANDING ══ */
+  /* OUTSTANDING */
   .outstanding-area { flex:1; overflow-y:auto; padding:12px 12px 24px; display:flex; flex-direction:column; gap:14px; -webkit-overflow-scrolling:touch; }
   .outstanding-header { display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
   .outstanding-title { font-family:'Barlow Condensed',sans-serif; font-size:0.8rem; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); }
@@ -330,12 +330,11 @@ function setSyncStatus(s){
 }
 
 // ── LOAD: BUSES TAB ──────────────────────────────────────
-// Strips ALL non-printable chars, BOM, smart quotes, and extra whitespace
 function cleanCell(c){
   return c
-    .replace(/^["'\u201C\u201D\u2018\u2019]+|["'\u201C\u201D\u2018\u2019]+$/g,'') // quotes
-    .replace(/^\uFEFF/,'')   // BOM
-    .replace(/[^\x20-\x7E]/g,'') // non-ASCII non-printable
+    .replace(/^["'\u201C\u201D\u2018\u2019]+|["'\u201C\u201D\u2018\u2019]+$/g,'')
+    .replace(/^\uFEFF/,'')
+    .replace(/[^\x20-\x7E]/g,'')
     .trim();
 }
 
@@ -403,6 +402,7 @@ function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(saveToSheet
 
 // ── LOAD: UPPER LOT ──────────────────────────────────────
 async function loadUpperFromSheet(isInitial=false){
+  // FIX 1: Always apply loaded data — no size-gate that blocks remote viewers
   if(isUpperSaving) return;
   try{
     const res=await fetch(csvUrl(UPPER_TAB)+Date.now());
@@ -413,9 +413,8 @@ async function loadUpperFromSheet(isInitial=false){
       const cols=line.split(',').map(c=>c.replace(/^"|"$/g,'').trim());
       if(cols[0]&&cols[0]!=='bus_number'&&(cols[1]||'').toUpperCase()==='TRUE') loaded.add(cols[0]);
     });
-    // Always apply on initial load or forced refresh; otherwise only if sheet has more data
-    if(isInitial||loaded.size>=upperArrivals.size){upperArrivals=loaded;renderUpperLot();}
-    else if(loaded.size>0){upperArrivals=loaded;renderUpperLot();}
+    upperArrivals=loaded;
+    renderUpperLot();
   }catch(e){console.error(e);}
 }
 
@@ -729,15 +728,11 @@ function renderOutstanding(){
 }
 
 // ── MIDNIGHT RESET ───────────────────────────────────────
-// Clears BusAssignments and UpperLotArrivals sheets, then reloads the page.
-// Scheduled to fire at the next midnight, then every 24h after.
 async function midnightReset(){
   console.log('[Midnight] Auto-reset triggered at', new Date().toLocaleTimeString());
   try{
-    // Clear lower lot — write just the header row
     await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({sheetId:SHEET_ID,tab:LOWER_TAB,rows:[['bus_number','spot_id']]})});
-    // Clear upper lot — write header + all buses set to FALSE
     const upperRows=[['bus_number','arrived']];
     [...upperHoboken,...upperNYC].forEach(num=>upperRows.push([num,'FALSE']));
     await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},
@@ -745,47 +740,50 @@ async function midnightReset(){
   }catch(e){
     console.error('[Midnight] Sheet clear failed:',e);
   }
-  // Hard reload so date badge, state, everything refreshes clean
   setTimeout(()=>window.location.reload(), 1500);
 }
 
 function scheduleMidnightReset(){
   const now=new Date();
   const midnight=new Date(now);
-  midnight.setHours(24,0,0,0); // next midnight
+  midnight.setHours(24,0,0,0);
   const msUntilMidnight=midnight-now;
   console.log(`[Midnight] Reset scheduled in ${Math.round(msUntilMidnight/60000)} minutes`);
   setTimeout(()=>{
     midnightReset();
-    // Re-schedule every 24h in case the tab stays open multiple days
     setInterval(midnightReset, 24*60*60*1000);
   }, msUntilMidnight);
 }
 
 // ── POLL / REFRESH ───────────────────────────────────────
+// FIX 2: resetPollTimer recurses correctly (was already fine)
 function resetPollTimer(){
   clearTimeout(pollTimer);
-  pollTimer=setTimeout(()=>loadFromSheet(false).then(()=>{updateOutstandingBadge();if(activeTab==='outstanding')renderOutstanding();}),60000);
+  pollTimer=setTimeout(()=>loadFromSheet(false).then(()=>{updateOutstandingBadge();if(activeTab==='outstanding')renderOutstanding();resetPollTimer();}),60000);
 }
+
+// FIX 2 (upper): resetUpperPollTimer now recurses like resetPollTimer does
 function resetUpperPollTimer(){
   clearTimeout(upperPollTimer);
-  upperPollTimer=setTimeout(()=>loadUpperFromSheet(false).then(()=>{updateOutstandingBadge();if(activeTab==='outstanding')renderOutstanding();}),60000);
+  upperPollTimer=setTimeout(()=>loadUpperFromSheet(false).then(()=>{updateOutstandingBadge();if(activeTab==='outstanding')renderOutstanding();resetUpperPollTimer();}),60000);
 }
+
+// FIX 4: Always poll both sheets every 30s regardless of active tab
 setInterval(()=>{
+  if(!isSaving) loadFromSheet(false);
+  if(!isUpperSaving) loadUpperFromSheet(false);
   updateOutstandingBadge();
-  if(activeTab==='outstanding'){renderOutstanding();loadFromSheet(false);loadUpperFromSheet(false);}
+  if(activeTab==='outstanding') renderOutstanding();
 },30000);
 
 async function manualRefresh(){
   const btn=document.querySelector('button[onclick="manualRefresh()"]');
   btn.style.transform='rotate(360deg)';btn.style.transition='transform 0.5s ease';
   setTimeout(()=>{btn.style.transform='';btn.style.transition='';},500);
-  // Reload bus list first, then force-clear state and reload both sheets
   await loadBusList();
   assignments={};
   upperArrivals=new Set();
   await Promise.all([loadFromSheet(true),loadUpperFromSheet(true)]);
-  // Re-render everything with the updated bus list
   renderGrid();
   renderChips();
   renderUpperLot();
@@ -805,7 +803,7 @@ async function manualRefresh(){
   checkCompletion();
   updateOutstandingBadge();
   resetPollTimer();
-  resetUpperPollTimer();
+  resetUpperPollTimer(); // FIX 3: start upper poll loop for all viewers on load
   scheduleMidnightReset();
 })();
 </script>
