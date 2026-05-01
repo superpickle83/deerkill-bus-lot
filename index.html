@@ -666,7 +666,6 @@ function renderArrivalGrid(gridId,busNums){
     const card=document.createElement('div');card.className='arrival-card'+(arrived?' arrived':'');
     card.innerHTML=`<div class="arrival-num">${num}</div><div class="arrival-check">✅</div><div class="arrival-pending">Pending</div>`;
     card.addEventListener('click',()=>toggleArrival(num));
-    card.addEventListener('touchend',e=>{e.preventDefault();toggleArrival(num);});
     grid.appendChild(card);
   });
 }
