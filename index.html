@@ -330,12 +330,11 @@ function setSyncStatus(s){
 }
 
 // ── LOAD: BUSES TAB ──────────────────────────────────────
-// Strips ALL non-printable chars, BOM, smart quotes, and extra whitespace
 function cleanCell(c){
   return c
-    .replace(/^["'\u201C\u201D\u2018\u2019]+|["'\u201C\u201D\u2018\u2019]+$/g,'') // quotes
-    .replace(/^\uFEFF/,'')   // BOM
-    .replace(/[^\x20-\x7E]/g,'') // non-ASCII non-printable
+    .replace(/^["'\u201C\u201D\u2018\u2019]+|["'\u201C\u201D\u2018\u2019]+$/g,'')
+    .replace(/^\uFEFF/,'')
+    .replace(/[^\x20-\x7E]/g,'')
     .trim();
 }
 
@@ -413,7 +412,6 @@ async function loadUpperFromSheet(isInitial=false){
       const cols=line.split(',').map(c=>c.replace(/^"|"$/g,'').trim());
       if(cols[0]&&cols[0]!=='bus_number'&&(cols[1]||'').toUpperCase()==='TRUE') loaded.add(cols[0]);
     });
-    // Always apply on initial load or forced refresh; otherwise only if sheet has more data
     if(isInitial||loaded.size>=upperArrivals.size){upperArrivals=loaded;renderUpperLot();}
     else if(loaded.size>0){upperArrivals=loaded;renderUpperLot();}
   }catch(e){console.error(e);}
@@ -584,13 +582,10 @@ function updateTrayHeight(unplaced){
     return;
   }
   tray.classList.remove('collapsed');
-  // Each chip row is ~50px (chip height 36px + gap 6px + padding).
-  // Measure the actual scrollHeight of the chips container and cap at 38vh.
   const chipsEl=document.getElementById('busChips');
-  // Force a brief reflow measurement after DOM update
   requestAnimationFrame(()=>{
-    const HEADER=44; // tray header px
-    const PADDING=32; // bottom padding buffer
+    const HEADER=44;
+    const PADDING=32;
     const contentH=chipsEl.scrollHeight+HEADER+PADDING;
     const maxAllowed=Math.round(window.innerHeight*0.38);
     tray.style.maxHeight=Math.min(contentH,maxAllowed)+'px';
@@ -750,31 +745,34 @@ function renderOutstanding(){
 }
 
 // ── MIDNIGHT RESET ───────────────────────────────────────
-// Two-pronged approach:
-// 1. scheduleMidnightReset() fires at clock midnight if the tab is open
-// 2. checkDateChange() runs every 5 min — catches the case where the tab
-//    was closed/sleeping at midnight and reopened the next morning
-
-const LAUNCH_DATE = new Date().toDateString(); // date app was loaded
+// loadBusList() is called FIRST inside midnightReset() to ensure
+// upperHoboken and upperNYC are populated even if the tab has been
+// open/sleeping since the previous day's init().
+const LAUNCH_DATE = new Date().toDateString();
 
 async function midnightReset(){
   console.log('[Midnight] Reset triggered at', new Date().toLocaleTimeString());
   try{
-    // Clear lower lot — header row only
+    // ✅ Re-fetch bus list so upperHoboken / upperNYC are never empty
+    await loadBusList();
+
+    // Clear lower lot assignments — header row only
     await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({sheetId:SHEET_ID,tab:LOWER_TAB,rows:[['bus_number','spot_id']]})});
-    // Clear upper lot — all buses back to FALSE
+
+    // Reset all upper lot buses to FALSE
     const upperRows=[['bus_number','arrived']];
     [...upperHoboken,...upperNYC].forEach(num=>upperRows.push([num,'FALSE']));
     await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({sheetId:SHEET_ID,tab:UPPER_TAB,rows:upperRows})});
+
     console.log('[Midnight] Sheets cleared — reloading in 3s');
   }catch(e){
     console.error('[Midnight] Sheet clear failed:',e);
   }
-  // Wait 3s to give no-cors fetches time to land before reload wipes the page
+  // Give no-cors fetches time to land before the reload wipes the page
   await new Promise(r=>setTimeout(r,3000));
   window.location.reload();
 }
@@ -782,18 +780,16 @@ async function midnightReset(){
 function scheduleMidnightReset(){
   const now=new Date();
   const midnight=new Date(now);
-  midnight.setHours(24,0,0,0); // next midnight local time
+  midnight.setHours(24,0,0,0);
   const msUntilMidnight=midnight-now;
   console.log(`[Midnight] Scheduled in ${Math.round(msUntilMidnight/60000)} min`);
   setTimeout(()=>{
     midnightReset();
-    // Re-arm every 24h if tab stays open across multiple days
     setInterval(midnightReset,24*60*60*1000);
   }, msUntilMidnight);
 }
 
-// Fallback: check every 5 minutes if the calendar date has changed since load.
-// Catches phones/tablets that sleep through midnight with the tab open.
+// Fallback: catches phones/tablets that slept through midnight
 function checkDateChange(){
   if(new Date().toDateString()!==LAUNCH_DATE){
     console.log('[DateChange] New day detected — triggering reset');
@@ -820,12 +816,10 @@ async function manualRefresh(){
   const btn=document.querySelector('button[onclick="manualRefresh()"]');
   btn.style.transform='rotate(360deg)';btn.style.transition='transform 0.5s ease';
   setTimeout(()=>{btn.style.transform='';btn.style.transition='';},500);
-  // Reload bus list first, then force-clear state and reload both sheets
   await loadBusList();
   assignments={};
   upperArrivals=new Set();
   await Promise.all([loadFromSheet(true),loadUpperFromSheet(true)]);
-  // Re-render everything with the updated bus list
   renderGrid();
   renderChips();
   renderUpperLot();
