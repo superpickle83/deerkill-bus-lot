@@ -101,7 +101,7 @@
   .spot-remove { position:absolute; top:2px; right:3px; font-size:0.495rem; color:var(--red); opacity:0; transition:opacity 0.12s; font-weight:700; font-family:'Barlow Condensed',sans-serif; }
   .spot.filled:hover .spot-remove { opacity:1; }
 
-  /* BUS TRAY — always visible, fixed height */
+  /* BUS TRAY */
   .bus-tray { flex-shrink:0; background:var(--surface); border-top:2px solid var(--border); display:flex; flex-direction:column; height:auto; max-height:38vh; transition:max-height 0.35s ease; overflow:hidden; }
   .bus-tray.collapsed { max-height:44px; }
   .tray-header { height:44px; padding:0 10px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); flex-shrink:0; }
@@ -343,21 +343,16 @@ async function loadBusList(){
     const res=await fetch(csvUrl(BUSES_TAB)+Date.now());
     const text=await res.text();
     const lines=text.trim().split(/\r?\n/);
-    console.log('[Buses] raw CSV lines:', lines);
     lowerBuses=[]; upperHoboken=[]; upperNYC=[];
     lines.slice(1).forEach((line,i)=>{
       const cols=line.split(',').map(cleanCell);
       const num=cols[0], lot=cols[1]||'', status=cols[2]||'';
       const active=status.toUpperCase()==='YES';
-      console.log(`[Buses] row ${i+1}: num="${num}" lot="${lot}" status="${status}" active=${active}`);
       if(!num||!active) return;
       if(lot==='Lower'||lot==='Both') lowerBuses.push(num);
       if(lot==='Upper-Hoboken'||lot==='Both') upperHoboken.push(num);
       if(lot==='Upper-NYC'||lot==='Both') upperNYC.push(num);
     });
-    console.log('[Buses] lowerBuses:',lowerBuses);
-    console.log('[Buses] upperHoboken:',upperHoboken);
-    console.log('[Buses] upperNYC:',upperNYC);
   }catch(e){
     console.error('Bus list load failed, using defaults',e);
     lowerBuses=['20','21','22','23','24','25','26','27','28','29','30','31','32','33','34','35','40','41','42','43','44','45','46','47','48','49','51','52','80','81'];
@@ -584,8 +579,7 @@ function updateTrayHeight(unplaced){
   tray.classList.remove('collapsed');
   const chipsEl=document.getElementById('busChips');
   requestAnimationFrame(()=>{
-    const HEADER=44;
-    const PADDING=32;
+    const HEADER=44, PADDING=32;
     const contentH=chipsEl.scrollHeight+HEADER+PADDING;
     const maxAllowed=Math.round(window.innerHeight*0.38);
     tray.style.maxHeight=Math.min(contentH,maxAllowed)+'px';
@@ -744,60 +738,6 @@ function renderOutstanding(){
   const lbl=document.createElement('div');lbl.className='os-refresh-label';lbl.textContent='Auto-updates every 30 seconds';area.appendChild(lbl);
 }
 
-// ── MIDNIGHT RESET ───────────────────────────────────────
-// loadBusList() is called FIRST inside midnightReset() to ensure
-// upperHoboken and upperNYC are populated even if the tab has been
-// open/sleeping since the previous day's init().
-const LAUNCH_DATE = new Date().toDateString();
-
-async function midnightReset(){
-  console.log('[Midnight] Reset triggered at', new Date().toLocaleTimeString());
-  try{
-    // ✅ Re-fetch bus list so upperHoboken / upperNYC are never empty
-    await loadBusList();
-
-    // Clear lower lot assignments — header row only
-    await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({sheetId:SHEET_ID,tab:LOWER_TAB,rows:[['bus_number','spot_id']]})});
-
-    // Reset all upper lot buses to FALSE
-    const upperRows=[['bus_number','arrived']];
-    [...upperHoboken,...upperNYC].forEach(num=>upperRows.push([num,'FALSE']));
-    await fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({sheetId:SHEET_ID,tab:UPPER_TAB,rows:upperRows})});
-
-    console.log('[Midnight] Sheets cleared — reloading in 3s');
-  }catch(e){
-    console.error('[Midnight] Sheet clear failed:',e);
-  }
-  // Give no-cors fetches time to land before the reload wipes the page
-  await new Promise(r=>setTimeout(r,3000));
-  window.location.reload();
-}
-
-function scheduleMidnightReset(){
-  const now=new Date();
-  const midnight=new Date(now);
-  midnight.setHours(24,0,0,0);
-  const msUntilMidnight=midnight-now;
-  console.log(`[Midnight] Scheduled in ${Math.round(msUntilMidnight/60000)} min`);
-  setTimeout(()=>{
-    midnightReset();
-    setInterval(midnightReset,24*60*60*1000);
-  }, msUntilMidnight);
-}
-
-// Fallback: catches phones/tablets that slept through midnight
-function checkDateChange(){
-  if(new Date().toDateString()!==LAUNCH_DATE){
-    console.log('[DateChange] New day detected — triggering reset');
-    midnightReset();
-  }
-}
-setInterval(checkDateChange, 5*60*1000);
-
 // ── POLL / REFRESH ───────────────────────────────────────
 function resetPollTimer(){
   clearTimeout(pollTimer);
@@ -840,7 +780,6 @@ async function manualRefresh(){
   updateOutstandingBadge();
   resetPollTimer();
   resetUpperPollTimer();
-  scheduleMidnightReset();
 })();
 </script>
 </body>
