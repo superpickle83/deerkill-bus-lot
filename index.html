@@ -1001,6 +1001,27 @@
 
   .am-mismatch{font-family:'Barlow Condensed',sans-serif;font-size:0.65rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#4aa8ff;background:rgba(74,168,255,0.08);border:1px solid rgba(74,168,255,0.25);border-radius:var(--radius-xs);padding:7px 12px;}
 
+  /* Stat cards as filter toggles (AM tab) */
+  .stat-filter{
+    cursor:pointer;touch-action:manipulation;text-align:left;
+    font-family:inherit;color:inherit;
+    transition:border-color 0.18s, background 0.18s, transform 0.12s, box-shadow 0.18s;
+  }
+  .stat-filter:active{transform:scale(0.96);}
+  .stat-filter:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  .stat-filter.filter-active{
+    border-color:rgba(245,166,35,0.55);
+    background:var(--accent-dim);
+    box-shadow:var(--glow-accent);
+  }
+  .stat-filter.filter-active .stat-label::after{content:' · tap to clear';opacity:0.6;}
+
+  .am-filter-empty{
+    font-family:'Barlow Condensed',sans-serif;font-size:0.8rem;font-weight:600;
+    letter-spacing:0.1em;text-transform:uppercase;color:var(--text-secondary);
+    opacity:0.5;padding:24px 8px;text-align:center;width:100%;
+  }
+
   @media print {
     header, .bus-tray, .stat-card, .overlay, .lot-banner, .tab-nav, .toast { display: none !important; }
     body { background: white; color: #111; height: auto; overflow: visible; }
@@ -1105,8 +1126,8 @@
 <div class="panel" id="panel-am" role="tabpanel" aria-labelledby="tab-am">
   <div class="upper-area">
     <div class="upper-stats">
-      <div class="stat-card"><div class="stat-label">Confirmed</div><div class="stat-value green" id="amStatConfirmed">0</div></div>
-      <div class="stat-card"><div class="stat-label">Pending</div><div class="stat-value" id="amStatPending">—</div></div>
+      <button class="stat-card stat-filter" id="amCardConfirmed" onclick="setAMFilter('confirmed')" aria-pressed="false"><div class="stat-label">Confirmed</div><div class="stat-value green" id="amStatConfirmed">0</div></button>
+      <button class="stat-card stat-filter" id="amCardPending" onclick="setAMFilter('pending')" aria-pressed="false"><div class="stat-label">Pending</div><div class="stat-value" id="amStatPending">—</div></button>
     </div>
     <div class="upper-section">
       <div class="upper-section-label"><span>🌅 AM Arrivals</span><span class="section-count" id="amCount">—</span></div>
@@ -1377,17 +1398,29 @@ async function loadAMFromSheet(isInitial=false,prefetched=null){
   }catch(e){console.error('AM load failed',e);}
 }
 
+let amFilter=null; // null = show all | 'confirmed' | 'pending'
+
+function setAMFilter(which){
+  amFilter=(amFilter===which)?null:which; // tap active filter again to clear
+  renderAM();
+}
+
 function renderAM(){
   const grid=document.getElementById('amGrid');
   grid.innerHTML='';
-  let confirmed=0,listOnly=0;
+  let confirmed=0,listOnly=0,shown=0;
   amActiveBuses.forEach(num=>{
     const st=amState[num]||{d:'OUT',e:'OUT'};
     const dIn=st.d==='IN',eIn=st.e==='IN';
+    const isConfirmed=dIn&&eIn;
     let cls='am-card',label='Tap to mark';
-    if(dIn&&eIn){cls+=' confirmed';label='Confirmed';confirmed++;}
+    if(isConfirmed){cls+=' confirmed';label='Confirmed';confirmed++;}
     else if(dIn){cls+=' field-in';label='Field ✓';}
     else if(eIn){cls+=' list-in';label='List ✓ · tap';listOnly++;}   // ← drop this line to remove the mismatch state
+    // Counts above cover the whole fleet; the filter only affects what renders.
+    if(amFilter==='confirmed'&&!isConfirmed)return;
+    if(amFilter==='pending'&&isConfirmed)return;
+    shown++;
     const card=document.createElement('button');
     card.type='button';card.className=cls;
     card.setAttribute('aria-pressed',dIn?'true':'false');
@@ -1396,9 +1429,19 @@ function renderAM(){
     card.addEventListener('click',()=>toggleAM(num));
     grid.appendChild(card);
   });
+  if(amFilter&&shown===0){
+    const note=document.createElement('div');note.className='am-filter-empty';
+    note.textContent=amFilter==='confirmed'?'No confirmed buses yet':'No pending buses — all confirmed 🎉';
+    grid.appendChild(note);
+  }
   const total=amActiveBuses.length;
   document.getElementById('amStatConfirmed').textContent=confirmed;
   document.getElementById('amStatPending').textContent=total-confirmed;
+  const fc=document.getElementById('amCardConfirmed'),fp=document.getElementById('amCardPending');
+  fc.classList.toggle('filter-active',amFilter==='confirmed');
+  fc.setAttribute('aria-pressed',amFilter==='confirmed'?'true':'false');
+  fp.classList.toggle('filter-active',amFilter==='pending');
+  fp.setAttribute('aria-pressed',amFilter==='pending'?'true':'false');
   const cnt=document.getElementById('amCount');
   cnt.textContent=`${confirmed} / ${total}`;
   cnt.className='section-count'+(total>0&&confirmed===total?' done':'');
@@ -1407,8 +1450,23 @@ function renderAM(){
   else mm.style.display='none';
 }
 
+let amPendingUnmark=null; // {num, timer} — armed by first tap on a green card
+
 function toggleAM(num){
   const cur=amState[num]||{d:'OUT',e:'OUT'};
+  const isConfirmed=cur.d==='IN'&&cur.e==='IN';
+  if(isConfirmed){
+    // Guard against stray kiosk taps: un-marking a fully confirmed bus
+    // takes two taps within 3 seconds. Amber (field-only) stays one-tap.
+    if(!amPendingUnmark||amPendingUnmark.num!==num){
+      if(amPendingUnmark)clearTimeout(amPendingUnmark.timer);
+      amPendingUnmark={num,timer:setTimeout(()=>{amPendingUnmark=null;},3000)};
+      showToast(`Tap bus ${num} again to un-mark`);
+      return;
+    }
+    clearTimeout(amPendingUnmark.timer);
+    amPendingUnmark=null;
+  }
   cur.d=cur.d==='IN'?'OUT':'IN';
   amState[num]=cur;amDirty.add(num);
   renderAM();scheduleAMSave(num);
