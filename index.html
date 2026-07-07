@@ -278,7 +278,21 @@
     backdrop-filter: var(--blur);
   }
 
-  .lot-inner { display: flex; flex-direction: row; align-items: flex-end; gap: 0; }
+  .camp-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.1);
+    text-align: center;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px dashed rgba(255,255,255,0.05);
+    width: 100%;
+  }
+
+  .lot-inner { display: flex; flex-direction: row; align-items: stretch; gap: 0; }
   .wilder-label {
     writing-mode: vertical-rl;
     transform: rotate(180deg);
@@ -293,42 +307,28 @@
     margin-right: 6px;
     align-self: center;
   }
-  .lot-grid { display: flex; flex-direction: row; align-items: flex-end; gap: 5px; }
-  .lot-col { display: flex; flex-direction: column-reverse; gap: 4px; align-items: center; }
-  .col-header {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 0.6rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.12);
-    text-align: center;
-    padding-bottom: 4px;
-    order: 999;
-  }
-  .lot-col.angled { margin-left: 8px; padding-left: 8px; border-left: 1px dashed rgba(255,255,255,0.06); }
-  .lot-col.angled .spot { border-style: dashed; border-color: rgba(255,255,255,0.08); background: rgba(10,14,22,0.8); transform: skewY(-8deg); }
-  .lot-col.angled .spot.filled { border-color: rgba(245,166,35,0.5); background: rgba(30,20,5,0.9); }
-  .lot-col.angled .spot.filled .spot-bus-num { color: var(--accent); }
-  .lot-col.angled .spot > * { transform: skewY(8deg); }
 
-  .row-labels { display: flex; flex-direction: column-reverse; gap: 4px; margin-right: 4px; align-items: flex-end; }
-  .row-label-item {
-    height: 56px;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 0.6rem;
-    font-weight: 700;
-    color: rgba(255,255,255,0.1);
-    padding-right: 4px;
+  .lot-rows { display: flex; flex-direction: column-reverse; gap: 5px; }
+  .lot-row { display: flex; flex-direction: row; align-items: center; gap: 5px; }
+
+  .row-label {
+    width: 26px;
     flex-shrink: 0;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: rgba(255,255,255,0.15);
+    text-align: right;
+    padding-right: 4px;
   }
-  .row-label-top { height: 20px; order: 999; }
 
-  .col-aisle { width: 6px; display: flex; flex-direction: column-reverse; align-items: center; justify-content: space-evenly; gap: 3px; align-self: stretch; padding-bottom: 20px; }
-  .aisle-dot { width: 2px; height: 2px; border-radius: 50%; background: rgba(255,255,255,0.04); flex-shrink: 0; }
+  .row-spots { display: flex; flex-direction: row; gap: 5px; }
+
+  .row-crooked-wrap { margin-left: 8px; padding-left: 8px; border-left: 1px dashed rgba(255,255,255,0.06); display: flex; }
+  .spot.crooked { border-style: dashed; border-color: rgba(255,255,255,0.08); background: rgba(10,14,22,0.8); transform: skewY(-8deg); }
+  .spot.crooked.filled { border-color: rgba(245,166,35,0.5); background: rgba(30,20,5,0.9); }
+  .spot.crooked.filled .spot-bus-num { color: var(--accent); }
+  .spot.crooked > * { transform: skewY(8deg); }
 
   .entrance-label {
     font-family: 'Barlow Condensed', sans-serif;
@@ -1173,11 +1173,31 @@ function csvUrl(tab){return`https://docs.google.com/spreadsheets/d/${SHEET_ID}/g
 function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
 
 // ── LOT LAYOUT ───────────────────────────────────────────
-const COL_ROWS={1:5,2:6,3:7,4:8},ANGLED_COL=5,MAX_ROWS=8;
+// Wilder Road runs along the left side of the lot. Row 1 (bottom, nearest
+// the Happiness Hill entrance) is the smallest row; Row 9 (top, nearest
+// Camp House) is also narrow — the lot widens through the middle rows.
+// Each row has a starting column and a count of regular spots (so the
+// tapered rows shift rightward rather than staying left-aligned), plus,
+// on every row but Row 1, one angled "crooked" spot.
+const ROW_CONFIG={
+  1:{startCol:1,count:1,crooked:false},
+  2:{startCol:1,count:4,crooked:true},
+  3:{startCol:1,count:4,crooked:true},
+  4:{startCol:1,count:4,crooked:true},
+  5:{startCol:1,count:4,crooked:true},
+  6:{startCol:1,count:4,crooked:true},
+  7:{startCol:2,count:3,crooked:true},
+  8:{startCol:3,count:2,crooked:true},
+  9:{startCol:4,count:1,crooked:true},
+};
+const MAX_ROWS=9,ANGLED_COL=5;
 function spotId(r,c){return`R${r}-C${c}`;}
 const ALL_SPOTS=[];
-for(let col=1;col<=4;col++) for(let row=1;row<=COL_ROWS[col];row++) ALL_SPOTS.push({id:spotId(row,col),row,col});
-for(let row=1;row<=MAX_ROWS;row++) ALL_SPOTS.push({id:spotId(row,5),row,col:5});
+for(let row=1;row<=MAX_ROWS;row++){
+  const cfg=ROW_CONFIG[row];
+  for(let col=cfg.startCol;col<cfg.startCol+cfg.count;col++) ALL_SPOTS.push({id:spotId(row,col),row,col});
+  if(cfg.crooked) ALL_SPOTS.push({id:spotId(row,ANGLED_COL),row,col:ANGLED_COL});
+}
 const SMAP={};ALL_SPOTS.forEach(s=>SMAP[s.id]=s);
 const TOTAL_SPOTS=ALL_SPOTS.length;
 
@@ -1539,34 +1559,34 @@ function switchTab(tab){
 function renderGrid(){
   const wrap=document.getElementById('lotWrap');
   wrap.innerHTML='';
+  const campLabel=document.createElement('div');campLabel.className='camp-label';campLabel.textContent='▲  Camp House  ▲';wrap.appendChild(campLabel);
   const inner=document.createElement('div');inner.className='lot-inner';
   const wl=document.createElement('div');wl.className='wilder-label';wl.textContent='◄ Wilder Road';inner.appendChild(wl);
-  const rlCol=document.createElement('div');rlCol.className='row-labels';
-  const rlt=document.createElement('div');rlt.className='row-label-top';rlCol.appendChild(rlt);
-  for(let r=1;r<=MAX_ROWS;r++){const rli=document.createElement('div');rli.className='row-label-item';rli.textContent=`R${r}`;rlCol.appendChild(rli);}
-  inner.appendChild(rlCol);
-  const grid=document.createElement('div');grid.className='lot-grid';
-  for(let col=1;col<=5;col++){
-    if(col>1){const aisle=document.createElement('div');aisle.className='col-aisle';for(let i=0;i<14;i++){const d=document.createElement('div');d.className='aisle-dot';aisle.appendChild(d);}grid.appendChild(aisle);}
-    const colEl=document.createElement('div');colEl.className='lot-col'+(col===ANGLED_COL?' angled':'');
-    const ch=document.createElement('div');ch.className='col-header';ch.textContent=col===ANGLED_COL?'C5':`C${col}`;colEl.appendChild(ch);
-    if(col===ANGLED_COL){
-      for(let row=1;row<=MAX_ROWS;row++) colEl.appendChild(makeSpot(spotId(row,col)));
-    }else{
-      const maxRow=COL_ROWS[col];
-      for(let row=1;row<=maxRow;row++) colEl.appendChild(makeSpot(spotId(row,col)));
-      if(col<4) for(let r=maxRow+1;r<=MAX_ROWS;r++){const ph=document.createElement('div');ph.style.cssText='width:56px;height:56px;flex-shrink:0;visibility:hidden;';colEl.appendChild(ph);}
+  const rowsEl=document.createElement('div');rowsEl.className='lot-rows';
+  for(let row=1;row<=MAX_ROWS;row++){
+    const cfg=ROW_CONFIG[row];
+    const rowEl=document.createElement('div');rowEl.className='lot-row';
+    const label=document.createElement('div');label.className='row-label';label.textContent=`R${row}`;rowEl.appendChild(label);
+    const spotsEl=document.createElement('div');spotsEl.className='row-spots';
+    for(let col=1;col<cfg.startCol;col++){const ph=document.createElement('div');ph.style.cssText='width:56px;height:56px;flex-shrink:0;visibility:hidden;';spotsEl.appendChild(ph);}
+    for(let col=cfg.startCol;col<cfg.startCol+cfg.count;col++) spotsEl.appendChild(makeSpot(spotId(row,col)));
+    rowEl.appendChild(spotsEl);
+    if(cfg.crooked){
+      const crookedWrap=document.createElement('div');crookedWrap.className='row-crooked-wrap';
+      crookedWrap.appendChild(makeSpot(spotId(row,ANGLED_COL)));
+      rowEl.appendChild(crookedWrap);
     }
-    grid.appendChild(colEl);
+    rowsEl.appendChild(rowEl);
   }
-  inner.appendChild(grid);wrap.appendChild(inner);
+  inner.appendChild(rowsEl);wrap.appendChild(inner);
   const el=document.createElement('div');el.className='entrance-label';el.textContent='▼  Happiness Hill Entrance  ▼';wrap.appendChild(el);
 }
 
 function makeSpot(sid){
   const busNum=assignments[sid];
+  const isCrooked=SMAP[sid]&&SMAP[sid].col===ANGLED_COL;
   const el=document.createElement('div');
-  el.className='spot'+(busNum?' filled':'');
+  el.className='spot'+(busNum?' filled':'')+(isCrooked?' crooked':'');
   el.dataset.spotId=sid;
   if(busNum){
     el.draggable=!locked;
