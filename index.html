@@ -324,6 +324,7 @@
 
   .row-spots { display: flex; flex-direction: row; gap: 5px; }
 
+  .row-extra-wrap { margin-right: 8px; padding-right: 8px; border-right: 1px dashed rgba(255,255,255,0.06); display: flex; }
   .row-crooked-wrap { margin-left: 8px; padding-left: 8px; border-left: 1px dashed rgba(255,255,255,0.06); display: flex; }
   .spot.crooked { border-style: dashed; border-color: rgba(255,255,255,0.08); background: rgba(10,14,22,0.8); transform: skewY(-8deg); }
   .spot.crooked.filled { border-color: rgba(245,166,35,0.5); background: rgba(30,20,5,0.9); }
@@ -1174,16 +1175,17 @@ function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
 
 // ── LOT LAYOUT ───────────────────────────────────────────
 // Wilder Road runs along the left side of the lot. There's also a single
-// fixed spot next to Wilder Road (nearest the entrance) that always holds
-// the same bus every day — it isn't part of the assignable lot, so it's
-// excluded from the grid entirely. Row 1 (bottom, nearest the Happiness
-// Hill entrance) is the first assignable row; Row 8 (top, nearest Camp
-// House) is narrow — the lot widens through the middle rows. Each row has
-// a starting column and a count of regular spots (so the tapered rows
-// shift rightward rather than staying left-aligned), plus one angled
-// "crooked" spot on every row.
+// fixed spot next to Wilder Road, in Row 1, that always holds the same bus
+// every day — it's still tracked in the app (so Dennis can mark it in/out),
+// but it's folded into Row 1 rather than getting its own separate row.
+// Row 1 (bottom, nearest the Happiness Hill entrance) is the first full
+// row; Row 8 (top, nearest Camp House) is narrow — the lot widens through
+// the middle rows. Each row has a starting column and a count of regular
+// spots (so the tapered rows shift rightward rather than staying
+// left-aligned), plus one angled "crooked" spot on every row. Column 0 is
+// reserved for Row 1's extra fixed spot; it never appears on other rows.
 const ROW_CONFIG={
-  1:{startCol:1,count:4,crooked:true},
+  1:{startCol:1,count:4,crooked:true,extra:true},
   2:{startCol:1,count:4,crooked:true},
   3:{startCol:1,count:4,crooked:true},
   4:{startCol:1,count:4,crooked:true},
@@ -1192,11 +1194,12 @@ const ROW_CONFIG={
   7:{startCol:3,count:2,crooked:true},
   8:{startCol:4,count:1,crooked:true},
 };
-const MAX_ROWS=8,ANGLED_COL=5;
+const MAX_ROWS=8,ANGLED_COL=5,EXTRA_COL=0;
 function spotId(r,c){return`R${r}-C${c}`;}
 const ALL_SPOTS=[];
 for(let row=1;row<=MAX_ROWS;row++){
   const cfg=ROW_CONFIG[row];
+  if(cfg.extra) ALL_SPOTS.push({id:spotId(row,EXTRA_COL),row,col:EXTRA_COL});
   for(let col=cfg.startCol;col<cfg.startCol+cfg.count;col++) ALL_SPOTS.push({id:spotId(row,col),row,col});
   if(cfg.crooked) ALL_SPOTS.push({id:spotId(row,ANGLED_COL),row,col:ANGLED_COL});
 }
@@ -1569,6 +1572,10 @@ function renderGrid(){
     const cfg=ROW_CONFIG[row];
     const rowEl=document.createElement('div');rowEl.className='lot-row';
     const label=document.createElement('div');label.className='row-label';label.textContent=`R${row}`;rowEl.appendChild(label);
+    const extraWrap=document.createElement('div');extraWrap.className='row-extra-wrap';
+    if(cfg.extra){extraWrap.appendChild(makeSpot(spotId(row,EXTRA_COL)));}
+    else{extraWrap.style.visibility='hidden';const ph=document.createElement('div');ph.style.cssText='width:56px;height:56px;';extraWrap.appendChild(ph);}
+    rowEl.appendChild(extraWrap);
     const spotsEl=document.createElement('div');spotsEl.className='row-spots';
     for(let col=1;col<cfg.startCol;col++){const ph=document.createElement('div');ph.style.cssText='width:56px;height:56px;flex-shrink:0;visibility:hidden;';spotsEl.appendChild(ph);}
     for(let col=cfg.startCol;col<cfg.startCol+cfg.count;col++) spotsEl.appendChild(makeSpot(spotId(row,col)));
@@ -1794,6 +1801,9 @@ function ordinal(n){const s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]
 function friendlySpot(sid,cur){
   const m=sid.match(/R(\d+)-C(\d+)/);if(!m)return sid;
   const row=parseInt(m[1]),col=parseInt(m[2]);
+  if(col===0){
+    return`Wilder Road Spot (Row ${row})`;
+  }
   if(col===5){
     const f=Object.keys(cur).filter(s=>s.endsWith('-C5')).map(s=>parseInt(s.match(/R(\d+)/)[1])).sort((a,b)=>a-b);
     return`${ordinal(f.indexOf(row)+1)} Crooked Bus`;
