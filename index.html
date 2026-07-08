@@ -1173,24 +1173,26 @@ function csvUrl(tab){return`https://docs.google.com/spreadsheets/d/${SHEET_ID}/g
 function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
 
 // ── LOT LAYOUT ───────────────────────────────────────────
-// Wilder Road runs along the left side of the lot. Row 1 (bottom, nearest
-// the Happiness Hill entrance) is the smallest row; Row 9 (top, nearest
-// Camp House) is also narrow — the lot widens through the middle rows.
-// Each row has a starting column and a count of regular spots (so the
-// tapered rows shift rightward rather than staying left-aligned), plus,
-// on every row but Row 1, one angled "crooked" spot.
+// Wilder Road runs along the left side of the lot. There's also a single
+// fixed spot next to Wilder Road (nearest the entrance) that always holds
+// the same bus every day — it isn't part of the assignable lot, so it's
+// excluded from the grid entirely. Row 1 (bottom, nearest the Happiness
+// Hill entrance) is the first assignable row; Row 8 (top, nearest Camp
+// House) is narrow — the lot widens through the middle rows. Each row has
+// a starting column and a count of regular spots (so the tapered rows
+// shift rightward rather than staying left-aligned), plus one angled
+// "crooked" spot on every row.
 const ROW_CONFIG={
-  1:{startCol:1,count:1,crooked:false},
+  1:{startCol:1,count:4,crooked:true},
   2:{startCol:1,count:4,crooked:true},
   3:{startCol:1,count:4,crooked:true},
   4:{startCol:1,count:4,crooked:true},
   5:{startCol:1,count:4,crooked:true},
-  6:{startCol:1,count:4,crooked:true},
-  7:{startCol:2,count:3,crooked:true},
-  8:{startCol:3,count:2,crooked:true},
-  9:{startCol:4,count:1,crooked:true},
+  6:{startCol:2,count:3,crooked:true},
+  7:{startCol:3,count:2,crooked:true},
+  8:{startCol:4,count:1,crooked:true},
 };
-const MAX_ROWS=9,ANGLED_COL=5;
+const MAX_ROWS=8,ANGLED_COL=5;
 function spotId(r,c){return`R${r}-C${c}`;}
 const ALL_SPOTS=[];
 for(let row=1;row<=MAX_ROWS;row++){
