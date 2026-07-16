@@ -1179,7 +1179,7 @@ function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
 // every day — it's still tracked in the app (so Dennis can mark it in/out),
 // but it's folded into Row 1 rather than getting its own separate row.
 // Row 1 (bottom, nearest the Happiness Hill entrance) is the first full
-// row; Row 8 (top, nearest Camp House) is narrow — the lot widens through
+// row; Row 9 (top, nearest Camp House) is narrow — the lot widens through
 // the middle rows. Each row has a starting column and a count of regular
 // spots (so the tapered rows shift rightward rather than staying
 // left-aligned), plus one angled "crooked" spot on every row. Column 0 is
@@ -1192,9 +1192,10 @@ const ROW_CONFIG={
   5:{startCol:1,count:4,crooked:true},
   6:{startCol:2,count:3,crooked:true},
   7:{startCol:3,count:2,crooked:true},
-  8:{startCol:4,count:1,crooked:true},
+  8:{startCol:3,count:2,crooked:true},
+  9:{startCol:3,count:2,crooked:true},
 };
-const MAX_ROWS=8,ANGLED_COL=5,EXTRA_COL=0;
+const MAX_ROWS=9,ANGLED_COL=5,EXTRA_COL=0;
 function spotId(r,c){return`R${r}-C${c}`;}
 const ALL_SPOTS=[];
 for(let row=1;row<=MAX_ROWS;row++){
@@ -1808,7 +1809,8 @@ function friendlySpot(sid,cur){
     const f=Object.keys(cur).filter(s=>s.endsWith('-C5')).map(s=>parseInt(s.match(/R(\d+)/)[1])).sort((a,b)=>a-b);
     return`${ordinal(f.indexOf(row)+1)} Crooked Bus`;
   }
-  return`${ordinal(row)} Row — ${ordinal(col)} Bus`;
+  const posInRow=col-ROW_CONFIG[row].startCol+1;
+  return`${ordinal(row)} Row — ${ordinal(posInRow)} Bus`;
 }
 
 function openShare(){
